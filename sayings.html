@@ -37,6 +37,8 @@
             padding: 10px;
             text-align: center;
             white-space: nowrap;
+            user-select: none; /* Prevent text selection */
+            touch-action: none; /* Disable default touch actions */
         }
         .tile.long-text {
             font-size: 20px;
@@ -165,11 +167,14 @@
                 // Adding touch event listeners for iPad
                 tile.addEventListener('touchstart', (e) => {
                     draggedTile = tile;
-                    e.dataTransfer.effectAllowed = 'move';
                 });
 
                 tile.addEventListener('touchmove', (e) => {
                     e.preventDefault();
+                    const touch = e.touches[0];
+                    draggedTile.style.position = 'absolute';
+                    draggedTile.style.left = touch.pageX - draggedTile.offsetWidth / 2 + 'px';
+                    draggedTile.style.top = touch.pageY - draggedTile.offsetHeight / 2 + 'px';
                 });
 
                 tile.addEventListener('touchend', (e) => {
@@ -202,6 +207,7 @@
                             };
                         }
                     }
+                    draggedTile.style.position = 'static';
                     draggedTile = null;
                 });
             });
