@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seb's Sayings</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: start;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            margin: 20px 0;
+            font-size: 60px;
+        }
+        h2, button {
+            margin: 20px 0;
+            font-size: 40px;
+        }
+        .container {
+            display: flex;
+            margin-top: 50px;
+        }
+        .tile {
+            margin: 10px;
+            background-color: lightblue;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            cursor: grab;
+            padding: 10px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .tile.long-text {
+            font-size: 20px;
+            width: auto;
+        }
+        #message {
+            margin-top: 20px;
+            font-size: 24px;
+            color: green;
+        }
+        #audioPlayer {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Seb's Sayings</h1>
+    <h2 id="subtitle">Move the words to make a well-known saying</h2>
+    <button id="startButton">Start</button>
+    <div class="container" id="container" style="display: none;">
+        <!-- Tiles will be inserted here by JavaScript -->
+    </div>
+    <button id="clueButton" style="display: none;">Clue</button>
+    <div id="message"></div>
+    <audio id="audioPlayer" controls></audio>
+    <script>
+        const sayingsList =['A picture is worth a thousand words', 'Actions speak louder than words', 'Better late than never', 'Birds of a feather flock together', 'Every cloud has a silver lining', 'Fortune favors the bold', 'Honesty is the best policy', 'Hope for the best prepare for the worst', 'If it aint broke dont fix it', 'Its better to give than to receive', 'Laughter is the best medicine', 'Practice makes perfect', 'Rome wasnt built in a day', 'The early bird catches the worm', 'The pen is mightier than the sword', 'Time flies when youre having fun', 'Two heads are better than one', 'When in Rome do as the Romans do', 'Where theres a will theres a way', 'You cant judge a book by its cover'];
+        const container = document.getElementById('container');
+        const message = document.getElementById('message');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const startButton = document.getElementById('startButton');
+        const clueButton = document.getElementById('clueButton');
+        const subtitle = document.getElementById('subtitle');
+        let currentSaying = "";
+
+        startButton.addEventListener('click', () => {
+            startButton.style.display = 'none';
+            subtitle.style.display = 'none';
+            container.style.display = 'flex';
+            clueButton.style.display = 'block';
+            startNewGame();
+        });
+
+        clueButton.addEventListener('click', () => {
+            if (currentSaying) {
+                audioPlayer.src = "sayings/" + currentSaying + ".mp3";
+                audioPlayer.play();
+            }
+        });
+
+        const chooseRandomSaying = (sayingsList) => {
+            const randomIndex = Math.floor(Math.random() * sayingsList.length);
+            return sayingsList[randomIndex];
+        };
+
+        const initializeGame = (saying) => {
+            currentSaying = saying;
+            const words = saying.split(" ");
+            let shuffledWords;
+            do {
+                shuffledWords = [...words];
+                shuffle(shuffledWords);
+            } while (shuffledWords.join(" ") === saying);
+
+            container.innerHTML = '';
+            shuffledWords.forEach((word, index) => {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.textContent = word;
+                tile.draggable = true;
+                tile.id = 'tile' + index;
+
+                if (word.length > 10) {
+                    tile.classList.add('long-text');
+                }
+                container.appendChild(tile);
+            });
+
+            const tiles = document.querySelectorAll('.tile');
+            let draggedTile = null;
+
+            tiles.forEach(tile => {
+                tile.addEventListener('dragstart', (e) => {
+                    draggedTile = tile;
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                tile.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                });
+
+                tile.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if (draggedTile !== tile) {
+                        const allTiles = Array.from(container.children);
+                        const draggedIndex = allTiles.indexOf(draggedTile);
+                        const dropIndex = allTiles.indexOf(tile);
+
+                        if (draggedIndex < dropIndex) {
+                            container.insertBefore(draggedTile, tile.nextSibling);
+                        } else {
+                            container.insertBefore(draggedTile, tile);
+                        }
+
+                        const currentOrder = Array.from(container.children).map(tile => tile.textContent).join(" ");
+                        if (currentOrder === saying) {
+                            message.textContent = "";
+                            audioPlayer.src = "sayings/well done.mp3";
+                            audioPlayer.play();
+                            audioPlayer.onended = () => {
+                                audioPlayer.src = "sayings/" + saying + ".mp3";
+                                audioPlayer.play();
+                                audioPlayer.onended = null;
+                                setTimeout(() => {
+                                    startNewGame();
+                                }, 5000);
+                            };
+                        }
+                    }
+                });
+
+                tile.addEventListener('dragend', () => {
+                    draggedTile = null;
+                });
+            });
+        };
+
+        const startNewGame = () => {
+            const randomSaying = chooseRandomSaying(sayingsList);
+            initializeGame(randomSaying);
+        };
+
+        const shuffle = (array) => {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        };
+
+    </script>
+</body>
+</html>

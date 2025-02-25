@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="windows-1252">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seb's Word Clicker Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        .word {
+            display: inline-block;
+            margin: 10px;
+            padding: 20px;
+            font-size:30px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+        .word:hover {
+            background-color: #ddd;
+        }
+        h1 {
+            font-size: 50px;  /* Increase title font size */
+        }
+        h2 {
+            font-size: 28px;  /* Increase subtitle font size */
+        }
+        #startButton {
+            font-size: 30px;  /* Increase start button font size */
+            padding: 10px 20px;
+            font-family: Arial, sans-serif;
+        }
+        #playAgainButton {
+            display: none;
+            font-size: 30px;  /* Set font size for play again button */
+            padding: 10px 20px;
+            font-family: Arial, sans-serif;
+            margin: 20px auto; /* Center the play again button */
+        }
+    </style>
+</head>
+<body>
+    <h1>Seb's Words</h1>
+    <h2>Click on the word you hear</h2>
+    <button id="startButton">Start</button>
+    <div id="wordsContainer"></div>
+    <button id="playAgainButton">Play word again</button>
+
+    <script>
+        const wordString = "the, of, and, to, a, in, is, it, you, that, he, was, for, on, are, as, with, his, they, I, at, be, this, have, from, or, one, had, by, word, but, not, what, all, were, we, when, your, can, said, there, use, an, each, which, she, do, how, their, if, will, up, other, about, out, many, then, them, these, so, some, her, would, make, like, him, into, time, has, look, two, more, write, go, see, number, no, way, could, people, my, than, first, water, been, call, who, oil, its, now, find, long, down, day, did, get, come, made, may, part";
+        const wordList = wordString.split(',');
+
+        function getRandomWords(list, count) {
+            const shuffled = [...list].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count);
+        }
+
+        function playAudio(fileName, callback) {
+            const audio = new Audio(fileName);
+            audio.play();
+            audio.onended = callback;
+        }
+
+        function startGame() {
+            const wordsContainer = document.getElementById('wordsContainer');
+            wordsContainer.innerHTML = '';
+            document.getElementById('playAgainButton').style.display = 'none';
+
+            const selectedWords = getRandomWords(wordList, 5);
+            const targetWord = selectedWords[Math.floor(Math.random() * selectedWords.length)];
+
+            playAudio(`${targetWord}.mp3`, null);  // Play the first word without delay
+
+            document.getElementById('playAgainButton').onclick = () => {
+                playAudio(`${targetWord}.mp3`, null);  // Play the chosen word again
+            };
+
+            selectedWords.forEach(word => {
+                const wordElement = document.createElement('div');
+                wordElement.className = 'word';
+                wordElement.textContent = word;
+                wordElement.onclick = () => {
+                    if (word === targetWord) {
+                        playAudio('correctSound.mp3', () => {
+                            setTimeout(startGame, 1000);  // Add a 1-second delay before starting the next word
+                        });
+                    } else {
+                        playAudio('wrongSound.mp3', null);
+                    }
+                };
+                wordsContainer.appendChild(wordElement);
+            });
+
+            document.getElementById('playAgainButton').style.display = 'block';  // Show the play again button
+        }
+
+        document.getElementById('startButton').onclick = () => {
+            document.querySelector('h2').style.display = 'none';
+            document.getElementById('startButton').style.display = 'none';
+            startGame();
+        };
+    </script>
+</body>
+</html>

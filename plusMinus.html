@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="windows-1252">
+    <title>Seb's Sums</title>
+    <style>
+        body {
+            text-align: center;
+            background-color: #f0f8ff; /* Light blue background */
+            color: #333333; /* Dark gray text color */
+            font-family: Arial, sans-serif;
+            font-size: 30px;
+        }
+
+        #questionContainer, #timerContainer, #endMessage {
+            display: none; /* Hide by default */
+        }
+
+        #questionContainer {
+            margin-top: 20px;
+            font-size: 72px; /* Larger text size for the numbers */
+        }
+
+        input {
+            font-size: 72px; /* Larger input text size */
+            padding: 10px;
+            width: 160px; /* 4 characters wide */
+        }
+
+        #timerContainer {
+            margin-top: 20px;
+            font-size: 72px; /* Double the size of the other numbers */
+            color: #7393B3; /* grey blue color for the timer */
+        }
+
+        #startButton {
+            margin-top: 20px;
+            font-size: 36px;
+            padding: 10px 20px;
+        }
+
+        #endMessage {
+            font-size: 36px;
+            color: #7393B3;
+        }
+    </style>
+    <script>
+        let timerInterval;
+        let correctAnswers = 0;
+        let wrongAnswers = 0;
+
+        function getRandomNumber() {
+            return Math.floor(Math.random() * 11); // Random number between 0 and 10
+        }
+
+        function playSound(fileName, callback) {
+            var audio = new Audio('numberFiles/'+fileName);
+            audio.play();
+            audio.addEventListener('ended', function() {
+                if (callback) {
+                    callback();
+                }
+            });
+        }
+
+        function generateQuestion() {
+            var num1 = getRandomNumber();
+            var num2 = getRandomNumber();
+            var isAddition = Math.random() > 0.5;
+            var questionText, answer, soundSequence;
+
+            if (isAddition) {
+                questionText = num1 + ' + ' + num2;
+                answer = num1 + num2;
+                soundSequence = [num1 + '.mp3', 'plus.mp3', num2 + '.mp3'];
+            } else {
+                if (num1 < num2) {
+                    [num1, num2] = [num2, num1]; // Ensure num1 is greater for positive results
+                }
+                questionText = num1 + ' - ' + num2;
+                answer = num1 - num2;
+                soundSequence = [num1 + '.mp3', 'minus.mp3', num2 + '.mp3'];
+            }
+
+            document.getElementById('question').innerText = questionText;
+            document.getElementById('answer').value = '';
+            document.getElementById('answer').dataset.sum = answer;
+
+            function playSounds(sequence, index = 0) {
+                if (index < sequence.length) {
+                    playSound(sequence[index], function() {
+                        playSounds(sequence, index + 1);
+                    });
+                }
+            }
+
+            playSounds(soundSequence);
+        }
+
+        function checkAnswer() {
+            var answerInput   = document.getElementById('answer');
+            var userAnswer    = parseInt(answerInput.value);
+            var correctAnswer = parseInt(answerInput.dataset.sum);
+
+            if (userAnswer === correctAnswer) {
+                correctAnswers++;
+                playSound('good.mp3', function() {
+                    setTimeout(generateQuestion, 1000); // Ask another question after a short delay
+                });
+            } else {
+                wrongAnswers++;
+                playSound('bad.mp3', function() {
+                    answerInput.value = ''; // Clear the input box
+                });
+            }
+        }
+
+        function startTimer(duration, display) {
+            var timer = duration, seconds;
+            timerInterval = setInterval(function () {
+                seconds = parseInt(timer % 60, 10);
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+                display.textContent = "Remaining Time: " + seconds + " Seconds";
+
+                if (--timer < 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('endMessage').style.display = 'block';
+                    document.getElementById('answer').disabled = true; // Disable input
+                    document.getElementById('endMessage').innerText = `Time's up! Correct Answers: ${correctAnswers}, Wrong Answers: ${wrongAnswers}`;
+                }
+            }, 1000);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var oneMinute = 60,
+                display = document.getElementById('timer');
+
+            document.getElementById('startButton').addEventListener('click', function () {
+                document.getElementById('endMessage').style.display = 'none';
+                document.getElementById('answer').disabled = false; // Enable input
+                document.getElementById('questionContainer').style.display = 'block';
+                document.getElementById('timerContainer').style.display = 'block';
+                correctAnswers = 0;
+                wrongAnswers = 0;
+                startTimer(oneMinute, display);
+                generateQuestion();
+            });
+
+            document.getElementById('answer').addEventListener('keydown', function(event) {
+                if (event.key === 'Enter' || event.key === 'Return') {
+                    event.preventDefault(); // Prevent the default action of the Enter key
+                    checkAnswer();
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>Seb's Sums</h1>
+    <button id="startButton">Start</button>
+    <div id="questionContainer">
+        <span id="question"></span>
+        <span>=</span> <!-- Only one '=' sign now -->
+        <input type="number" id="answer" />
+    </div>
+    <div id="timerContainer">
+        <div id="timer">Remaining Time: 60 Seconds</div>
+    </div>
+    <div id="endMessage">Time's up! Good job!</div>
+</body>
+</html>
