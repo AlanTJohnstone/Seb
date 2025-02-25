@@ -167,14 +167,18 @@
                 // Adding touch event listeners for iPad
                 tile.addEventListener('touchstart', (e) => {
                     draggedTile = tile;
+                    tile.style.touchAction = 'none'; /* Disable default touch actions */
                 });
 
                 tile.addEventListener('touchmove', (e) => {
                     e.preventDefault();
                     const touch = e.touches[0];
+                    const rect = container.getBoundingClientRect();
+                    const offsetX = rect.left + window.pageXOffset;
+                    const offsetY = rect.top + window.pageYOffset;
                     draggedTile.style.position = 'absolute';
-                    draggedTile.style.left = touch.pageX - draggedTile.offsetWidth / 2 + 'px';
-                    draggedTile.style.top = touch.pageY - draggedTile.offsetHeight / 2 + 'px';
+                    draggedTile.style.left = touch.pageX - draggedTile.offsetWidth / 2 + offsetX + 'px';
+                    draggedTile.style.top = touch.pageY - draggedTile.offsetHeight / 2 + offsetY + 'px';
                 });
 
                 tile.addEventListener('touchend', (e) => {
