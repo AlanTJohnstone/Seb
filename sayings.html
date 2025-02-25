@@ -161,6 +161,49 @@
                 tile.addEventListener('dragend', () => {
                     draggedTile = null;
                 });
+
+                // Adding touch event listeners for iPad
+                tile.addEventListener('touchstart', (e) => {
+                    draggedTile = tile;
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                tile.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                });
+
+                tile.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    const touch = e.changedTouches[0];
+                    const targetTile = document.elementFromPoint(touch.clientX, touch.clientY);
+                    if (draggedTile !== targetTile && targetTile.classList.contains('tile')) {
+                        const allTiles = Array.from(container.children);
+                        const draggedIndex = allTiles.indexOf(draggedTile);
+                        const dropIndex = allTiles.indexOf(targetTile);
+
+                        if (draggedIndex < dropIndex) {
+                            container.insertBefore(draggedTile, targetTile.nextSibling);
+                        } else {
+                            container.insertBefore(draggedTile, targetTile);
+                        }
+
+                        const currentOrder = Array.from(container.children).map(tile => tile.textContent).join(" ");
+                        if (currentOrder === saying) {
+                            message.textContent = "";
+                            audioPlayer.src = "sayings/well done.mp3";
+                            audioPlayer.play();
+                            audioPlayer.onended = () => {
+                                audioPlayer.src = "sayings/" + saying + ".mp3";
+                                audioPlayer.play();
+                                audioPlayer.onended = null;
+                                setTimeout(() => {
+                                    startNewGame();
+                                }, 5000);
+                            };
+                        }
+                    }
+                    draggedTile = null;
+                });
             });
         };
 
@@ -175,7 +218,6 @@
                 [array[i], array[j]] = [array[j], array[i]];
             }
         };
-
     </script>
 </body>
 </html>
