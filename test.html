@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="windows-1252">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Draggable Tiles</title>
     <style>
@@ -29,6 +29,7 @@
             font-size: 2em;
             cursor: grab;
             user-select: none;
+            touch-action: none;
         }
 
         .tile.dragging {
@@ -50,9 +51,11 @@
         document.addEventListener('DOMContentLoaded', () => {
             const tiles = document.querySelectorAll('.tile');
             let draggedTile = null;
-            let initialX = null;
+            let initialX = 0;
+            let currentX = 0;
 
             tiles.forEach(tile => {
+                // Mouse drag events (unchanged)
                 tile.addEventListener('dragstart', (e) => {
                     draggedTile = tile;
                     tile.classList.add('dragging');
@@ -62,10 +65,10 @@
                     draggedTile.classList.remove('dragging');
                     draggedTile.style.removeProperty('position');
                     draggedTile.style.removeProperty('left');
-                    draggedTile.style.removeProperty('top');
                     draggedTile = null;
                 });
 
+                // Touch events (fixed)
                 tile.addEventListener('touchstart', (e) => {
                     draggedTile = tile;
                     initialX = e.touches[0].pageX;
@@ -73,32 +76,35 @@
                     e.preventDefault();
                 });
 
-                tile.addEventListener('touchend', () => {
-                    draggedTile.classList.remove('dragging');
-                    const container = document.querySelector('.tile-container');
-                    const afterElement = getTouchAfterElement(tiles, initialX);
-                    if (afterElement == null) {
-                        container.appendChild(draggedTile);
-                    } else {
-                        container.insertBefore(draggedTile, afterElement);
-                    }
-                    draggedTile.style.removeProperty('position');
-                    draggedTile.style.removeProperty('left');
-                    draggedTile.style.removeProperty('top');
-                    draggedTile = null;
-                });
-
                 tile.addEventListener('touchmove', (e) => {
-                    const touch = e.touches[0];
                     if (draggedTile) {
-                        const deltaX = touch.pageX - initialX;
+                        currentX = e.touches[0].pageX;
+                        const deltaX = currentX - initialX;
                         draggedTile.style.position = 'relative';
                         draggedTile.style.left = `${deltaX}px`;
+
+                        const container = document.querySelector('.tile-container');
+                        const afterElement = getTouchAfterElement(tiles, currentX);
+                        if (afterElement == null) {
+                            container.appendChild(draggedTile);
+                        } else {
+                            container.insertBefore(draggedTile, afterElement);
+                        }
                     }
                     e.preventDefault();
                 });
+
+                tile.addEventListener('touchend', () => {
+                    if (draggedTile) {
+                        draggedTile.classList.remove('dragging');
+                        draggedTile.style.removeProperty('position');
+                        draggedTile.style.removeProperty('left');
+                        draggedTile = null;
+                    }
+                });
             });
 
+            // Mouse dragover (unchanged)
             document.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 const afterElement = getDragAfterElement(tiles, e.clientX);
@@ -112,7 +118,6 @@
 
             function getDragAfterElement(tiles, x) {
                 const draggableElements = [...tiles].filter(tile => tile !== draggedTile);
-
                 return draggableElements.reduce((closest, child) => {
                     const box = child.getBoundingClientRect();
                     const offset = x - box.left - box.width / 2;
@@ -126,7 +131,6 @@
 
             function getTouchAfterElement(tiles, x) {
                 const draggableElements = [...tiles].filter(tile => tile !== draggedTile);
-
                 return draggableElements.reduce((closest, child) => {
                     const box = child.getBoundingClientRect();
                     const offset = x - box.left - box.width / 2;
