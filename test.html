@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="windows-1252">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Draggable Tiles</title>
     <style>
@@ -75,6 +75,13 @@
 
                 tile.addEventListener('touchend', () => {
                     draggedTile.classList.remove('dragging');
+                    const container = document.querySelector('.tile-container');
+                    const afterElement = getTouchAfterElement(tiles, initialX);
+                    if (afterElement == null) {
+                        container.appendChild(draggedTile);
+                    } else {
+                        container.insertBefore(draggedTile, afterElement);
+                    }
                     draggedTile.style.removeProperty('position');
                     draggedTile.style.removeProperty('left');
                     draggedTile.style.removeProperty('top');
@@ -105,7 +112,21 @@
 
             function getDragAfterElement(tiles, x) {
                 const draggableElements = [...tiles].filter(tile => tile !== draggedTile);
-                
+
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = x - box.left - box.width / 2;
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    } else {
+                        return closest;
+                    }
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }
+
+            function getTouchAfterElement(tiles, x) {
+                const draggableElements = [...tiles].filter(tile => tile !== draggedTile);
+
                 return draggableElements.reduce((closest, child) => {
                     const box = child.getBoundingClientRect();
                     const offset = x - box.left - box.width / 2;
