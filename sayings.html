@@ -133,10 +133,10 @@
             const tiles = document.querySelectorAll('.tile');
             let draggedTile = null;
             let initialX = 0;
-            let currentX = 0;
+            let touchOffsetX = 0; // Offset between finger and tile's left edge
 
             tiles.forEach(tile => {
-                // Mouse drag events
+                // Mouse drag events (unchanged)
                 tile.addEventListener('dragstart', (e) => {
                     draggedTile = tile;
                     tile.classList.add('dragging');
@@ -150,10 +150,13 @@
                     checkOrder(saying);
                 });
 
-                // Touch events
+                // Touch events (updated)
                 tile.addEventListener('touchstart', (e) => {
                     draggedTile = tile;
-                    initialX = e.touches[0].pageX;
+                    const touch = e.touches[0];
+                    initialX = touch.pageX;
+                    const rect = tile.getBoundingClientRect();
+                    touchOffsetX = initialX - rect.left; // Distance from finger to tile's left edge
                     tile.classList.add('dragging');
                     tile.style.zIndex = 1000;
                     e.preventDefault();
@@ -161,16 +164,24 @@
 
                 tile.addEventListener('touchmove', (e) => {
                     if (draggedTile) {
-                        currentX = e.touches[0].pageX;
+                        const currentX = e.touches[0].pageX;
                         const deltaX = currentX - initialX;
                         draggedTile.style.position = 'relative';
                         draggedTile.style.left = `${deltaX}px`;
 
                         const afterElement = getTouchAfterElement(tiles, currentX);
+                        const previousParent = draggedTile.parentNode;
                         if (afterElement === null) {
                             container.appendChild(draggedTile);
                         } else {
                             container.insertBefore(draggedTile, afterElement);
+                        }
+
+                        // If tile was reordered, update initialX to keep it under the finger
+                        if (previousParent !== draggedTile.parentNode || draggedTile.nextSibling !== afterElement) {
+                            const newRect = draggedTile.getBoundingClientRect();
+                            initialX = currentX - (newRect.left - container.getBoundingClientRect().left) + touchOffsetX;
+                            draggedTile.style.left = `${currentX - initialX}px`;
                         }
                     }
                     e.preventDefault();
@@ -192,7 +203,7 @@
                 });
             });
 
-            // Mouse dragover
+            // Mouse dragover (unchanged)
             document.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 const afterElement = getDragAfterElement(tiles, e.clientX);
