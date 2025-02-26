@@ -25,6 +25,7 @@
         .container {
             display: flex;
             margin-top: 50px;
+            position: relative; /* Added to contain absolutely positioned tiles */
         }
         .tile {
             margin: 10px;
@@ -48,6 +49,7 @@
             background-color: #aaa;
             opacity: 0.6;
             cursor: grabbing;
+            position: absolute; /* Use absolute positioning during drag */
         }
         #message {
             margin-top: 20px;
@@ -132,8 +134,7 @@
 
             const tiles = document.querySelectorAll('.tile');
             let draggedTile = null;
-            let initialX = 0;
-            let touchOffsetX = 0; // Offset between finger and tile's left edge
+            let touchOffsetX = 0; // Offset from finger to tile's left edge
 
             tiles.forEach(tile => {
                 // Mouse drag events (unchanged)
@@ -150,38 +151,30 @@
                     checkOrder(saying);
                 });
 
-                // Touch events (updated)
+                // Touch events (revised)
                 tile.addEventListener('touchstart', (e) => {
                     draggedTile = tile;
                     const touch = e.touches[0];
-                    initialX = touch.pageX;
                     const rect = tile.getBoundingClientRect();
-                    touchOffsetX = initialX - rect.left; // Distance from finger to tile's left edge
+                    const containerRect = container.getBoundingClientRect();
+                    touchOffsetX = touch.pageX - rect.left; // Distance from finger to tile's left edge
                     tile.classList.add('dragging');
+                    tile.style.left = `${rect.left - containerRect.left}px`; // Set initial absolute position
                     tile.style.zIndex = 1000;
                     e.preventDefault();
                 });
 
                 tile.addEventListener('touchmove', (e) => {
                     if (draggedTile) {
-                        const currentX = e.touches[0].pageX;
-                        const deltaX = currentX - initialX;
-                        draggedTile.style.position = 'relative';
-                        draggedTile.style.left = `${deltaX}px`;
+                        const touchX = e.touches[0].pageX;
+                        const containerRect = container.getBoundingClientRect();
+                        draggedTile.style.left = `${touchX - containerRect.left - touchOffsetX}px`;
 
-                        const afterElement = getTouchAfterElement(tiles, currentX);
-                        const previousParent = draggedTile.parentNode;
+                        const afterElement = getTouchAfterElement(tiles, touchX);
                         if (afterElement === null) {
                             container.appendChild(draggedTile);
                         } else {
                             container.insertBefore(draggedTile, afterElement);
-                        }
-
-                        // If tile was reordered, update initialX to keep it under the finger
-                        if (previousParent !== draggedTile.parentNode || draggedTile.nextSibling !== afterElement) {
-                            const newRect = draggedTile.getBoundingClientRect();
-                            initialX = currentX - (newRect.left - container.getBoundingClientRect().left) + touchOffsetX;
-                            draggedTile.style.left = `${currentX - initialX}px`;
                         }
                     }
                     e.preventDefault();
@@ -191,13 +184,9 @@
                     if (draggedTile) {
                         draggedTile.classList.remove('dragging');
                         draggedTile.style.zIndex = '';
-                        draggedTile.style.position = 'relative';
-                        draggedTile.style.left = '0px';
-                        setTimeout(() => {
-                            draggedTile.style.removeProperty('position');
-                            draggedTile.style.removeProperty('left');
-                            draggedTile = null;
-                        }, 0);
+                        draggedTile.style.removeProperty('position');
+                        draggedTile.style.removeProperty('left');
+                        draggedTile = null;
                         checkOrder(saying);
                     }
                 });
