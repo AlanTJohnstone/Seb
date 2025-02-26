@@ -68,11 +68,12 @@
                     draggedTile = null;
                 });
 
-                // Touch events (fixed)
+                // Touch events (updated for iPad)
                 tile.addEventListener('touchstart', (e) => {
                     draggedTile = tile;
                     initialX = e.touches[0].pageX;
                     tile.classList.add('dragging');
+                    tile.style.zIndex = 1000;
                     e.preventDefault();
                 });
 
@@ -85,7 +86,7 @@
 
                         const container = document.querySelector('.tile-container');
                         const afterElement = getTouchAfterElement(tiles, currentX);
-                        if (afterElement == null) {
+                        if (afterElement === null) {
                             container.appendChild(draggedTile);
                         } else {
                             container.insertBefore(draggedTile, afterElement);
@@ -94,12 +95,17 @@
                     e.preventDefault();
                 });
 
-                tile.addEventListener('touchend', () => {
+                tile.addEventListener('touchend', (e) => {
                     if (draggedTile) {
                         draggedTile.classList.remove('dragging');
-                        draggedTile.style.removeProperty('position');
-                        draggedTile.style.removeProperty('left');
-                        draggedTile = null;
+                        draggedTile.style.zIndex = '';
+                        draggedTile.style.position = 'relative';
+                        draggedTile.style.left = '0px';
+                        setTimeout(() => {
+                            draggedTile.style.removeProperty('position');
+                            draggedTile.style.removeProperty('left');
+                            draggedTile = null;
+                        }, 0);
                     }
                 });
             });
