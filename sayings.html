@@ -25,7 +25,8 @@
         .container {
             display: flex;
             margin-top: 50px;
-            position: relative; /* Added to contain absolutely positioned tiles */
+            overflow: hidden; /* Prevent overflow artifacts */
+            width: 100%; /* Ensure full width */
         }
         .tile {
             margin: 10px;
@@ -40,6 +41,8 @@
             white-space: nowrap;
             user-select: none;
             touch-action: none;
+            flex-shrink: 0; /* Prevent shrinking */
+            position: relative; /* Default positioning */
         }
         .tile.long-text {
             font-size: 20px;
@@ -49,7 +52,6 @@
             background-color: #aaa;
             opacity: 0.6;
             cursor: grabbing;
-            position: absolute; /* Use absolute positioning during drag */
         }
         #message {
             margin-top: 20px;
@@ -134,10 +136,11 @@
 
             const tiles = document.querySelectorAll('.tile');
             let draggedTile = null;
-            let touchOffsetX = 0; // Offset from finger to tile's left edge
+            let initialX = 0;
+            let currentX = 0;
 
             tiles.forEach(tile => {
-                // Mouse drag events (unchanged)
+                // Mouse drag events
                 tile.addEventListener('dragstart', (e) => {
                     draggedTile = tile;
                     tile.classList.add('dragging');
@@ -151,30 +154,37 @@
                     checkOrder(saying);
                 });
 
-                // Touch events (revised)
+                // Touch events
                 tile.addEventListener('touchstart', (e) => {
                     draggedTile = tile;
-                    const touch = e.touches[0];
-                    const rect = tile.getBoundingClientRect();
-                    const containerRect = container.getBoundingClientRect();
-                    touchOffsetX = touch.pageX - rect.left; // Distance from finger to tile's left edge
+                    initialX = e.touches[0].pageX;
                     tile.classList.add('dragging');
-                    tile.style.left = `${rect.left - containerRect.left}px`; // Set initial absolute position
                     tile.style.zIndex = 1000;
                     e.preventDefault();
                 });
 
                 tile.addEventListener('touchmove', (e) => {
                     if (draggedTile) {
-                        const touchX = e.touches[0].pageX;
-                        const containerRect = container.getBoundingClientRect();
-                        draggedTile.style.left = `${touchX - containerRect.left - touchOffsetX}px`;
+                        currentX = e.touches[0].pageX;
+                        const deltaX = currentX - initialX;
+                        draggedTile.style.position = 'relative';
+                        draggedTile.style.left = `${deltaX}px`;
 
-                        const afterElement = getTouchAfterElement(tiles, touchX);
+                        const afterElement = getTouchAfterElement(tiles, currentX);
+                        const previousSibling = draggedTile.previousSibling;
+                        const nextSibling = draggedTile.nextSibling;
+
                         if (afterElement === null) {
                             container.appendChild(draggedTile);
                         } else {
                             container.insertBefore(draggedTile, afterElement);
+                        }
+
+                        // Reset initialX if tile moved to a new position
+                        if (draggedTile.previousSibling !== previousSibling || draggedTile.nextSibling !== nextSibling) {
+                            const rect = draggedTile.getBoundingClientRect();
+                            initialX = currentX - (rect.left - container.getBoundingClientRect().left);
+                            draggedTile.style.left = '0px'; // Reset to new position
                         }
                     }
                     e.preventDefault();
@@ -184,15 +194,19 @@
                     if (draggedTile) {
                         draggedTile.classList.remove('dragging');
                         draggedTile.style.zIndex = '';
-                        draggedTile.style.removeProperty('position');
-                        draggedTile.style.removeProperty('left');
+                        draggedTile.style.position = ''; // Clear immediately
+                        draggedTile.style.left = ''; // Clear immediately
                         draggedTile = null;
+                        // Force repaint
+                        container.style.display = 'none';
+                        container.offsetHeight; // Trigger reflow
+                        container.style.display = 'flex';
                         checkOrder(saying);
                     }
                 });
             });
 
-            // Mouse dragover (unchanged)
+            // Mouse dragover
             document.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 const afterElement = getDragAfterElement(tiles, e.clientX);
