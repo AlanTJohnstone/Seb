@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="windows-1252">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draggable Tiles</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        .tile-container {
+            display: flex;
+        }
+
+        .tile {
+            width: 100px;
+            height: 100px;
+            margin: 10px;
+            background-color: #ddd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .tile.dragging {
+            background-color: #aaa;
+            opacity: 0.6;
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body>
+    <div class="tile-container">
+        <div class="tile" draggable="true">A</div>
+        <div class="tile" draggable="true">B</div>
+        <div class="tile" draggable="true">C</div>
+        <div class="tile" draggable="true">D</div>
+        <div class="tile" draggable="true">E</div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tiles = document.querySelectorAll('.tile');
+            let draggedTile = null;
+
+            tiles.forEach(tile => {
+                tile.addEventListener('dragstart', (e) => {
+                    draggedTile = tile;
+                    tile.classList.add('dragging');
+                });
+
+                tile.addEventListener('dragend', () => {
+                    draggedTile.classList.remove('dragging');
+                    draggedTile = null;
+                });
+
+                tile.addEventListener('touchstart', (e) => {
+                    draggedTile = tile;
+                    tile.classList.add('dragging');
+                    e.preventDefault();
+                });
+
+                tile.addEventListener('touchend', () => {
+                    draggedTile.classList.remove('dragging');
+                    draggedTile = null;
+                });
+
+                tile.addEventListener('touchmove', (e) => {
+                    const touch = e.touches[0];
+                    draggedTile.style.position = 'absolute';
+                    draggedTile.style.left = `${touch.pageX - draggedTile.offsetWidth / 2}px`;
+                    draggedTile.style.top = `${touch.pageY - draggedTile.offsetHeight / 2}px`;
+                    e.preventDefault();
+                });
+            });
+
+            document.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const afterElement = getDragAfterElement(tiles, e.clientX);
+                const container = document.querySelector('.tile-container');
+                if (afterElement == null) {
+                    container.appendChild(draggedTile);
+                } else {
+                    container.insertBefore(draggedTile, afterElement);
+                }
+            });
+
+            function getDragAfterElement(tiles, x) {
+                const draggableElements = [...tiles].filter(tile => tile !== draggedTile);
+                
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = x - box.left - box.width / 2;
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    } else {
+                        return closest;
+                    }
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }
+        });
+    </script>
+</body>
+</html>
