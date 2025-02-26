@@ -37,12 +37,17 @@
             padding: 10px;
             text-align: center;
             white-space: nowrap;
-            user-select: none; /* Prevent text selection */
-            touch-action: none; /* Disable default touch actions */
+            user-select: none;
+            touch-action: none;
+            position: relative;
         }
         .tile.long-text {
             font-size: 20px;
             width: auto;
+        }
+        .tile.dragging {
+            background-color: #aaa;
+            opacity: 0.6;
         }
         #message {
             margin-top: 20px;
@@ -58,14 +63,23 @@
     <h1>Seb's Sayings</h1>
     <h2 id="subtitle">Move the words to make a well-known saying</h2>
     <button id="startButton">Start</button>
-    <div class="container" id="container" style="display: none;">
-        <!-- Tiles will be inserted here by JavaScript -->
-    </div>
+    <div class="container" id="container" style="display: none;"></div>
     <button id="clueButton" style="display: none;">Clue</button>
     <div id="message"></div>
     <audio id="audioPlayer" controls></audio>
     <script>
-        const sayingsList =['A picture is worth a thousand words', 'Actions speak louder than words', 'Better late than never', 'Birds of a feather flock together', 'Every cloud has a silver lining', 'Fortune favors the bold', 'Honesty is the best policy', 'Hope for the best prepare for the worst', 'If it aint broke dont fix it', 'Its better to give than to receive', 'Laughter is the best medicine', 'Practice makes perfect', 'Rome wasnt built in a day', 'The early bird catches the worm', 'The pen is mightier than the sword', 'Time flies when youre having fun', 'Two heads are better than one', 'When in Rome do as the Romans do', 'Where theres a will theres a way', 'You cant judge a book by its cover'];
+        const sayingsList = [
+            'A picture is worth a thousand words', 'Actions speak louder than words',
+            'Better late than never', 'Birds of a feather flock together',
+            'Every cloud has a silver lining', 'Fortune favors the bold',
+            'Honesty is the best policy', 'Hope for the best prepare for the worst',
+            'If it aint broke dont fix it', 'Its better to give than to receive',
+            'Laughter is the best medicine', 'Practice makes perfect',
+            'Rome wasnt built in a day', 'The early bird catches the worm',
+            'The pen is mightier than the sword', 'Time flies when youre having fun',
+            'Two heads are better than one', 'When in Rome do as the Romans do',
+            'Where theres a will theres a way', 'You cant judge a book by its cover'
+        ];
         const container = document.getElementById('container');
         const message = document.getElementById('message');
         const audioPlayer = document.getElementById('audioPlayer');
@@ -110,7 +124,6 @@
                 tile.textContent = word;
                 tile.draggable = true;
                 tile.id = 'tile' + index;
-
                 if (word.length > 10) {
                     tile.classList.add('long-text');
                 }
@@ -143,20 +156,7 @@
                             container.insertBefore(draggedTile, tile);
                         }
 
-                        const currentOrder = Array.from(container.children).map(tile => tile.textContent).join(" ");
-                        if (currentOrder === saying) {
-                            message.textContent = "";
-                            audioPlayer.src = "sayings/well done.mp3";
-                            audioPlayer.play();
-                            audioPlayer.onended = () => {
-                                audioPlayer.src = "sayings/" + saying + ".mp3";
-                                audioPlayer.play();
-                                audioPlayer.onended = null;
-                                setTimeout(() => {
-                                    startNewGame();
-                                }, 5000);
-                            };
-                        }
+                        checkOrder(saying);
                     }
                 });
 
@@ -164,55 +164,56 @@
                     draggedTile = null;
                 });
 
-                // Adding touch event listeners for iPad
                 tile.addEventListener('touchstart', (e) => {
                     draggedTile = tile;
-                    tile.style.touchAction = 'none'; /* Disable default touch actions */
+                    const touch = e.touches[0];
+                    tile.initialX = touch.pageX;
+                    tile.initialY = touch.pageY;
+                    tile.style.position = 'absolute';
+                    tile.style.zIndex = 1000;
+                    tile.classList.add('dragging');
+                    e.preventDefault();
                 });
 
                 tile.addEventListener('touchmove', (e) => {
+                    if (draggedTile) {
+                        const touch = e.touches[0];
+                        const deltaX = touch.pageX - draggedTile.initialX;
+                        const deltaY = touch.pageY - draggedTile.initialY;
+                        draggedTile.style.left = `${deltaX}px`;
+                        draggedTile.style.top = `${deltaY}px`;
+
+                        const allTiles = Array.from(container.children);
+                        const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+                        if (dropTarget && dropTarget.classList.contains('tile') && dropTarget !== draggedTile) {
+                            const draggedIndex = allTiles.indexOf(draggedTile);
+                            const dropIndex = allTiles.indexOf(dropTarget);
+                            if (draggedIndex < dropIndex) {
+                                container.insertBefore(draggedTile, dropTarget.nextSibling);
+                            } else {
+                                container.insertBefore(draggedTile, dropTarget);
+                            }
+                        }
+                    }
                     e.preventDefault();
-                    const touch = e.touches[0];
-                    const rect = container.getBoundingClientRect();
-                    const offsetX = rect.left + window.pageXOffset;
-                    const offsetY = rect.top + window.pageYOffset;
-                    draggedTile.style.position = 'absolute';
-                    draggedTile.style.left = touch.pageX - draggedTile.offsetWidth / 2 + offsetX + 'px';
-                    draggedTile.style.top = touch.pageY - draggedTile.offsetHeight / 2 + offsetY + 'px';
                 });
 
                 tile.addEventListener('touchend', (e) => {
-                    e.preventDefault();
-                    const touch = e.changedTouches[0];
-                    const targetTile = document.elementFromPoint(touch.clientX, touch.clientY);
-                    if (draggedTile !== targetTile && targetTile.classList.contains('tile')) {
-                        const allTiles = Array.from(container.children);
-                        const draggedIndex = allTiles.indexOf(draggedTile);
-                        const dropIndex = allTiles.indexOf(targetTile);
+                    if (draggedTile) {
+                        draggedTile.classList.remove('dragging');
+                        draggedTile.style.zIndex = '';
+                        draggedTile.style.position = 'relative';
+                        draggedTile.style.left = '0px';
+                        draggedTile.style.top = '0px';
+                        setTimeout(() => {
+                            draggedTile.style.removeProperty('position');
+                            draggedTile.style.removeProperty('left');
+                            draggedTile.style.removeProperty('top');
+                            draggedTile = null;
+                        }, 0);
 
-                        if (draggedIndex < dropIndex) {
-                            container.insertBefore(draggedTile, targetTile.nextSibling);
-                        } else {
-                            container.insertBefore(draggedTile, targetTile);
-                        }
-
-                        const currentOrder = Array.from(container.children).map(tile => tile.textContent).join(" ");
-                        if (currentOrder === saying) {
-                            message.textContent = "";
-                            audioPlayer.src = "sayings/well done.mp3";
-                            audioPlayer.play();
-                            audioPlayer.onended = () => {
-                                audioPlayer.src = "sayings/" + saying + ".mp3";
-                                audioPlayer.play();
-                                audioPlayer.onended = null;
-                                setTimeout(() => {
-                                    startNewGame();
-                                }, 5000);
-                            };
-                        }
+                        checkOrder(saying);
                     }
-                    draggedTile.style.position = 'static';
-                    draggedTile = null;
                 });
             });
         };
@@ -228,6 +229,23 @@
                 [array[i], array[j]] = [array[j], array[i]];
             }
         };
+
+        function checkOrder(saying) {
+            const currentOrder = Array.from(container.children).map(tile => tile.textContent).join(" ");
+            if (currentOrder === saying) {
+                message.textContent = "";
+                audioPlayer.src = "sayings/well done.mp3";
+                audioPlayer.play();
+                audioPlayer.onended = () => {
+                    audioPlayer.src = "sayings/" + saying + ".mp3";
+                    audioPlayer.play();
+                    audioPlayer.onended = null;
+                    setTimeout(() => {
+                        startNewGame();
+                    }, 5000);
+                };
+            }
+        }
     </script>
 </body>
 </html>
