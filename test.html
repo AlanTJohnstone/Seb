@@ -50,6 +50,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const tiles = document.querySelectorAll('.tile');
             let draggedTile = null;
+            let initialX = null;
 
             tiles.forEach(tile => {
                 tile.addEventListener('dragstart', (e) => {
@@ -59,25 +60,34 @@
 
                 tile.addEventListener('dragend', () => {
                     draggedTile.classList.remove('dragging');
+                    draggedTile.style.removeProperty('position');
+                    draggedTile.style.removeProperty('left');
+                    draggedTile.style.removeProperty('top');
                     draggedTile = null;
                 });
 
                 tile.addEventListener('touchstart', (e) => {
                     draggedTile = tile;
+                    initialX = e.touches[0].pageX;
                     tile.classList.add('dragging');
                     e.preventDefault();
                 });
 
                 tile.addEventListener('touchend', () => {
                     draggedTile.classList.remove('dragging');
+                    draggedTile.style.removeProperty('position');
+                    draggedTile.style.removeProperty('left');
+                    draggedTile.style.removeProperty('top');
                     draggedTile = null;
                 });
 
                 tile.addEventListener('touchmove', (e) => {
                     const touch = e.touches[0];
-                    draggedTile.style.position = 'absolute';
-                    draggedTile.style.left = `${touch.pageX - draggedTile.offsetWidth / 2}px`;
-                    draggedTile.style.top = `${touch.pageY - draggedTile.offsetHeight / 2}px`;
+                    if (draggedTile) {
+                        const deltaX = touch.pageX - initialX;
+                        draggedTile.style.position = 'relative';
+                        draggedTile.style.left = `${deltaX}px`;
+                    }
                     e.preventDefault();
                 });
             });
