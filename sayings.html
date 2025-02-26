@@ -39,7 +39,6 @@
             white-space: nowrap;
             user-select: none;
             touch-action: none;
-            position: relative;
         }
         .tile.long-text {
             font-size: 20px;
@@ -48,6 +47,7 @@
         .tile.dragging {
             background-color: #aaa;
             opacity: 0.6;
+            cursor: grabbing;
         }
         #message {
             margin-top: 20px;
@@ -132,67 +132,45 @@
 
             const tiles = document.querySelectorAll('.tile');
             let draggedTile = null;
+            let initialX = 0;
+            let currentX = 0;
 
             tiles.forEach(tile => {
+                // Mouse drag events
                 tile.addEventListener('dragstart', (e) => {
                     draggedTile = tile;
-                    e.dataTransfer.effectAllowed = 'move';
-                });
-
-                tile.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                });
-
-                tile.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    if (draggedTile !== tile) {
-                        const allTiles = Array.from(container.children);
-                        const draggedIndex = allTiles.indexOf(draggedTile);
-                        const dropIndex = allTiles.indexOf(tile);
-
-                        if (draggedIndex < dropIndex) {
-                            container.insertBefore(draggedTile, tile.nextSibling);
-                        } else {
-                            container.insertBefore(draggedTile, tile);
-                        }
-
-                        checkOrder(saying);
-                    }
+                    tile.classList.add('dragging');
                 });
 
                 tile.addEventListener('dragend', () => {
+                    draggedTile.classList.remove('dragging');
+                    draggedTile.style.removeProperty('position');
+                    draggedTile.style.removeProperty('left');
                     draggedTile = null;
+                    checkOrder(saying);
                 });
 
+                // Touch events
                 tile.addEventListener('touchstart', (e) => {
                     draggedTile = tile;
-                    const touch = e.touches[0];
-                    tile.initialX = touch.pageX;
-                    tile.initialY = touch.pageY;
-                    tile.style.position = 'absolute';
-                    tile.style.zIndex = 1000;
+                    initialX = e.touches[0].pageX;
                     tile.classList.add('dragging');
+                    tile.style.zIndex = 1000;
                     e.preventDefault();
                 });
 
                 tile.addEventListener('touchmove', (e) => {
                     if (draggedTile) {
-                        const touch = e.touches[0];
-                        const deltaX = touch.pageX - draggedTile.initialX;
-                        const deltaY = touch.pageY - draggedTile.initialY;
+                        currentX = e.touches[0].pageX;
+                        const deltaX = currentX - initialX;
+                        draggedTile.style.position = 'relative';
                         draggedTile.style.left = `${deltaX}px`;
-                        draggedTile.style.top = `${deltaY}px`;
 
-                        const allTiles = Array.from(container.children);
-                        const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-                        if (dropTarget && dropTarget.classList.contains('tile') && dropTarget !== draggedTile) {
-                            const draggedIndex = allTiles.indexOf(draggedTile);
-                            const dropIndex = allTiles.indexOf(dropTarget);
-                            if (draggedIndex < dropIndex) {
-                                container.insertBefore(draggedTile, dropTarget.nextSibling);
-                            } else {
-                                container.insertBefore(draggedTile, dropTarget);
-                            }
+                        const afterElement = getTouchAfterElement(tiles, currentX);
+                        if (afterElement === null) {
+                            container.appendChild(draggedTile);
+                        } else {
+                            container.insertBefore(draggedTile, afterElement);
                         }
                     }
                     e.preventDefault();
@@ -204,18 +182,52 @@
                         draggedTile.style.zIndex = '';
                         draggedTile.style.position = 'relative';
                         draggedTile.style.left = '0px';
-                        draggedTile.style.top = '0px';
                         setTimeout(() => {
                             draggedTile.style.removeProperty('position');
                             draggedTile.style.removeProperty('left');
-                            draggedTile.style.removeProperty('top');
                             draggedTile = null;
                         }, 0);
-
                         checkOrder(saying);
                     }
                 });
             });
+
+            // Mouse dragover
+            document.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const afterElement = getDragAfterElement(tiles, e.clientX);
+                if (afterElement == null) {
+                    container.appendChild(draggedTile);
+                } else {
+                    container.insertBefore(draggedTile, afterElement);
+                }
+            });
+
+            function getDragAfterElement(tiles, x) {
+                const draggableElements = [...tiles].filter(tile => tile !== draggedTile);
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = x - box.left - box.width / 2;
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    } else {
+                        return closest;
+                    }
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }
+
+            function getTouchAfterElement(tiles, x) {
+                const draggableElements = [...tiles].filter(tile => tile !== draggedTile);
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = x - box.left - box.width / 2;
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    } else {
+                        return closest;
+                    }
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }
         };
 
         const startNewGame = () => {
