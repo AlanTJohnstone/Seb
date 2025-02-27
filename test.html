@@ -1,152 +1,206 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="windows-1252">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Draggable Tiles</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Interactive Tile Grid with Animation</title>
     <style>
         body {
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             background-color: #f0f0f0;
+            font-family: 'Arial', sans-serif;
+            -webkit-user-select: none; /* Prevent text selection on iOS */
+            user-select: none;
+            touch-action: manipulation; /* Prevent double-tap zoom on iOS */
         }
 
-        .tile-container {
+        .container {
+            margin: 50px;
+        }
+
+        .tile-line {
             display: flex;
+            justify-content: center;
+            gap: 20px;
+            min-height: 120px;
+            padding: 10px;
+            position: relative;
+        }
+
+        #target-line {
+            margin-top: 100px;
         }
 
         .tile {
             width: 100px;
             height: 100px;
-            margin: 10px;
             background-color: #ddd;
             display: flex;
             justify-content: center;
             align-items: center;
             font-size: 2em;
-            cursor: grab;
-            user-select: none;
-            touch-action: none;
+            font-weight: bold;
+            cursor: pointer;
+            -webkit-transition: -webkit-transform 0.3s ease, background-color 0.2s ease;
+            transition: transform 0.3s ease, background-color 0.2s ease;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 1;
         }
 
-        .tile.dragging {
-            background-color: #aaa;
-            opacity: 0.6;
-            cursor: grabbing;
+        .tile:hover {
+            background-color: #ccc;
+            -webkit-transform: scale(1.05);
+            transform: scale(1.05);
+        }
+
+        .tile.moving {
+            position: absolute;
+            z-index: 10;
+            -webkit-transition: all 1s ease;
+            transition: all 1s ease;
+        }
+
+        .tile.hidden {
+            visibility: hidden;
+            position: absolute;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            .tile {
+                width: 80px;
+                height: 80px;
+                font-size: 1.5em;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="tile-container">
-        <div class="tile" draggable="true">A</div>
-        <div class="tile" draggable="true">B</div>
-        <div class="tile" draggable="true">C</div>
-        <div class="tile" draggable="true">D</div>
-        <div class="tile" draggable="true">E</div>
+    <div class="container">
+        <div class="tile-line" id="original-line">
+            <div class="tile" data-letter="A">A</div>
+            <div class="tile" data-letter="B">B</div>
+            <div class="tile" data-letter="C">C</div>
+            <div class="tile" data-letter="D">D</div>
+            <div class="tile" data-letter="E">E</div>
+        </div>
+        <div class="tile-line" id="target-line"></div>
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const tiles = document.querySelectorAll('.tile');
-            let draggedTile = null;
-            let initialX = 0;
-            let currentX = 0;
+            const originalLine = document.getElementById('original-line');
+            const targetLine = document.getElementById('target-line');
 
-            tiles.forEach(tile => {
-                // Mouse drag events (unchanged)
-                tile.addEventListener('dragstart', (e) => {
-                    draggedTile = tile;
-                    tile.classList.add('dragging');
-                });
+            // Create a new tile element
+            const createTile = (letter) => {
+                const tile = document.createElement('div');
+                tile.classList.add('tile');
+                tile.textContent = letter;
+                tile.dataset.letter = letter;
+                addTileListeners(tile, moveBackToOriginal);
+                return tile;
+            };
 
-                tile.addEventListener('dragend', () => {
-                    draggedTile.classList.remove('dragging');
-                    draggedTile.style.removeProperty('position');
-                    draggedTile.style.removeProperty('left');
-                    draggedTile = null;
-                });
-
-                // Touch events (updated for iPad)
+            // Add event listeners for both click and touch
+            const addTileListeners = (tile, handler) => {
+                tile.addEventListener('click', handler);
                 tile.addEventListener('touchstart', (e) => {
-                    draggedTile = tile;
-                    initialX = e.touches[0].pageX;
-                    tile.classList.add('dragging');
-                    tile.style.zIndex = 1000;
-                    e.preventDefault();
+                    e.preventDefault(); // Prevent scrolling or other defaults
+                    handler(e);
+                });
+            };
+
+            // Animate and move tile from original to target
+            const moveToTarget = (event) => {
+                const originalTile = event.currentTarget;
+                const letter = originalTile.dataset.letter;
+                
+                // Create a clone for animation
+                const animatedTile = originalTile.cloneNode(true);
+                animatedTile.classList.add('moving');
+                originalLine.appendChild(animatedTile);
+
+                // Get original tile’s position relative to the original line
+                const originalRect = originalTile.getBoundingClientRect();
+                const originalLineRect = originalLine.getBoundingClientRect();
+                const startX = originalRect.left - originalLineRect.left;
+                const startY = originalRect.top - originalLineRect.top;
+
+                // Set initial position to match the clicked tile
+                animatedTile.style.left = `${startX}px`;
+                animatedTile.style.top = `${startY}px`;
+
+                // Get target position (approximate end of target line)
+                const targetRect = targetLine.getBoundingClientRect();
+                const offsetX = targetRect.left - originalLineRect.left + targetLine.children.length * 120;
+                const offsetY = targetRect.top - originalLineRect.top;
+
+                // Trigger animation
+                requestAnimationFrame(() => {
+                    animatedTile.style.webkitTransform = `translate(${offsetX - startX}px, ${offsetY - startY}px)`;
+                    animatedTile.style.transform = `translate(${offsetX - startX}px, ${offsetY - startY}px)`;
                 });
 
-                tile.addEventListener('touchmove', (e) => {
-                    if (draggedTile) {
-                        currentX = e.touches[0].pageX;
-                        const deltaX = currentX - initialX;
-                        draggedTile.style.position = 'relative';
-                        draggedTile.style.left = `${deltaX}px`;
+                // After animation, hide original, add to target, and clean up
+                setTimeout(() => {
+                    originalTile.classList.add('hidden');
+                    const newTile = createTile(letter);
+                    targetLine.appendChild(newTile);
+                    animatedTile.remove();
+                }, 1000);
+            };
 
-                        const container = document.querySelector('.tile-container');
-                        const afterElement = getTouchAfterElement(tiles, currentX);
-                        if (afterElement === null) {
-                            container.appendChild(draggedTile);
-                        } else {
-                            container.insertBefore(draggedTile, afterElement);
-                        }
-                    }
-                    e.preventDefault();
+            // Animate and move tile from target back to original
+            const moveBackToOriginal = (event) => {
+                const targetTile = event.currentTarget;
+                const letter = targetTile.dataset.letter;
+                const originalTile = originalLine.querySelector(`.tile[data-letter="${letter}"]`);
+
+                // Create a clone for animation
+                const animatedTile = targetTile.cloneNode(true);
+                animatedTile.classList.add('moving');
+                targetLine.appendChild(animatedTile);
+
+                // Get target tile’s position relative to the target line
+                const targetRect = targetTile.getBoundingClientRect();
+                const targetLineRect = targetLine.getBoundingClientRect();
+                const startX = targetRect.left - targetLineRect.left;
+                const startY = targetRect.top - targetLineRect.top;
+
+                // Set initial position to match the clicked tile
+                animatedTile.style.left = `${startX}px`;
+                animatedTile.style.top = `${startY}px`;
+
+                // Get original tile’s position (still in layout with visibility: hidden)
+                const originalRect = originalTile.getBoundingClientRect();
+                const originalLineRect = originalLine.getBoundingClientRect();
+                const offsetX = originalRect.left - targetLineRect.left;
+                const offsetY = originalRect.top - targetLineRect.top;
+
+                // Trigger animation directly to the original position
+                requestAnimationFrame(() => {
+                    animatedTile.style.webkitTransform = `translate(${offsetX - startX}px, ${offsetY - startY}px)`;
+                    animatedTile.style.transform = `translate(${offsetX - startX}px, ${offsetY - startY}px)`;
                 });
 
-                tile.addEventListener('touchend', (e) => {
-                    if (draggedTile) {
-                        draggedTile.classList.remove('dragging');
-                        draggedTile.style.zIndex = '';
-                        draggedTile.style.position = 'relative';
-                        draggedTile.style.left = '0px';
-                        setTimeout(() => {
-                            draggedTile.style.removeProperty('position');
-                            draggedTile.style.removeProperty('left');
-                            draggedTile = null;
-                        }, 0);
-                    }
-                });
+                // After animation, show original, remove from target, and clean up
+                setTimeout(() => {
+                    originalTile.classList.remove('hidden');
+                    targetTile.remove();
+                    animatedTile.remove();
+                }, 1000);
+            };
+
+            // Initialize original tiles
+            originalLine.querySelectorAll('.tile').forEach(tile => {
+                addTileListeners(tile, moveToTarget);
             });
-
-            // Mouse dragover (unchanged)
-            document.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                const afterElement = getDragAfterElement(tiles, e.clientX);
-                const container = document.querySelector('.tile-container');
-                if (afterElement == null) {
-                    container.appendChild(draggedTile);
-                } else {
-                    container.insertBefore(draggedTile, afterElement);
-                }
-            });
-
-            function getDragAfterElement(tiles, x) {
-                const draggableElements = [...tiles].filter(tile => tile !== draggedTile);
-                return draggableElements.reduce((closest, child) => {
-                    const box = child.getBoundingClientRect();
-                    const offset = x - box.left - box.width / 2;
-                    if (offset < 0 && offset > closest.offset) {
-                        return { offset: offset, element: child };
-                    } else {
-                        return closest;
-                    }
-                }, { offset: Number.NEGATIVE_INFINITY }).element;
-            }
-
-            function getTouchAfterElement(tiles, x) {
-                const draggableElements = [...tiles].filter(tile => tile !== draggedTile);
-                return draggableElements.reduce((closest, child) => {
-                    const box = child.getBoundingClientRect();
-                    const offset = x - box.left - box.width / 2;
-                    if (offset < 0 && offset > closest.offset) {
-                        return { offset: offset, element: child };
-                    } else {
-                        return closest;
-                    }
-                }, { offset: Number.NEGATIVE_INFINITY }).element;
-            }
         });
     </script>
 </body>
