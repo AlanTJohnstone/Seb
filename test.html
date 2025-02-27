@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="windows-1252"> <!-- Updated to UTF-8 for consistency -->
+    <meta charset="windows-1252">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Interactive Tile Grid with Animation</title>
     <style>
@@ -20,6 +20,7 @@
 
         .container {
             margin: 50px;
+            position: relative;
         }
 
         .tile-line {
@@ -45,7 +46,6 @@
             font-size: 2em;
             font-weight: bold;
             cursor: pointer;
-            -webkit-transition: -webkit-transform 0.3s ease, background-color 0.2s ease;
             transition: transform 0.3s ease, background-color 0.2s ease;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -55,25 +55,23 @@
 
         .tile:hover {
             background-color: #ccc;
-            -webkit-transform: scale(1.05);
             transform: scale(1.05);
         }
 
         .tile.moving {
             position: absolute;
             z-index: 10;
-            -webkit-transition: all 1s ease;
             transition: all 1s ease;
+            visibility: visible !important; /* Ensure it’s visible during animation */
         }
 
         .tile.hidden {
             visibility: hidden;
-            position: absolute;
         }
 
         .tile.disabled {
-            pointer-events: none; /* Prevents clicks/taps during animation */
-            opacity: 0.7; /* Visual feedback */
+            pointer-events: none;
+            opacity: 0.7;
         }
 
         @media (max-width: 600px) {
@@ -100,6 +98,19 @@
         document.addEventListener('DOMContentLoaded', () => {
             const originalLine = document.getElementById('original-line');
             const targetLine = document.getElementById('target-line');
+            const container = document.querySelector('.container');
+            let isAnimating = false;
+            const tilePositions = new Map();
+
+            // Store initial positions relative to container
+            originalLine.querySelectorAll('.tile').forEach(tile => {
+                const rect = tile.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                tilePositions.set(tile.dataset.letter, {
+                    x: rect.left - containerRect.left,
+                    y: rect.top - containerRect.top
+                });
+            });
 
             // Create a new tile element
             const createTile = (letter) => {
@@ -111,101 +122,100 @@
                 return tile;
             };
 
-            // Add event listeners for both click and touch
+            // Add event listeners
             const addTileListeners = (tile, handler) => {
-                tile.addEventListener('click', handler);
-                tile.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    handler(e);
-                });
+                tile.addEventListener('click', handleEvent(handler));
+                tile.addEventListener('touchstart', handleEvent(handler));
             };
 
-            // Remove event listeners to prevent duplicates
+            // Remove event listeners
             const removeTileListeners = (tile, handler) => {
                 tile.removeEventListener('click', handler);
                 tile.removeEventListener('touchstart', handler);
             };
 
-            // Animate and move tile from original to target
+            // Unified event handler to prevent duplicates
+            const handleEvent = (handler) => (e) => {
+                e.preventDefault();
+                if (isAnimating) return;
+                isAnimating = true;
+                handler(e);
+            };
+
+            // Move tile from original to target with animation
             const moveToTarget = (event) => {
                 const originalTile = event.currentTarget;
                 const letter = originalTile.dataset.letter;
 
-                // Disable tile immediately
                 originalTile.classList.add('disabled');
                 removeTileListeners(originalTile, moveToTarget);
 
+                // Clone the tile before hiding the original
                 const animatedTile = originalTile.cloneNode(true);
                 animatedTile.classList.add('moving');
-                originalLine.appendChild(animatedTile);
+                container.appendChild(animatedTile);
 
-                const originalRect = originalTile.getBoundingClientRect();
-                const originalLineRect = originalLine.getBoundingClientRect();
-                const startX = originalRect.left - originalLineRect.left;
-                const startY = originalRect.top - originalLineRect.top;
+                const originalPos = tilePositions.get(letter);
+                animatedTile.style.left = `${originalPos.x}px`;
+                animatedTile.style.top = `${originalPos.y}px`;
+                animatedTile.style.visibility = 'visible'; // Ensure it’s visible
 
-                animatedTile.style.left = `${startX}px`;
-                animatedTile.style.top = `${startY}px`;
+                // Hide the original tile *after* cloning
+                originalTile.classList.add('hidden');
 
                 const targetRect = targetLine.getBoundingClientRect();
-                const offsetX = targetRect.left - originalLineRect.left + targetLine.children.length * 120;
-                const offsetY = targetRect.top - originalLineRect.top;
+                const containerRect = container.getBoundingClientRect();
+                const offsetX = targetRect.left - containerRect.left + targetLine.children.length * 120;
+                const offsetY = targetRect.top - containerRect.top;
 
                 requestAnimationFrame(() => {
-                    animatedTile.style.webkitTransform = `translate(${offsetX - startX}px, ${offsetY - startY}px)`;
-                    animatedTile.style.transform = `translate(${offsetX - startX}px, ${offsetY - startY}px)`;
+                    animatedTile.style.transform = `translate(${offsetX - originalPos.x}px, ${offsetY - originalPos.y}px)`;
                 });
 
                 setTimeout(() => {
-                    originalTile.classList.add('hidden');
                     const newTile = createTile(letter);
                     targetLine.appendChild(newTile);
                     animatedTile.remove();
-                    originalTile.classList.remove('disabled'); // Re-enable after animation (though hidden)
+                    originalTile.classList.remove('disabled');
+                    isAnimating = false;
                 }, 1000);
             };
 
-            // Animate and move tile from target back to original
+            // Move tile from target back to original with animation
             const moveBackToOriginal = (event) => {
                 const targetTile = event.currentTarget;
                 const letter = targetTile.dataset.letter;
                 const originalTile = originalLine.querySelector(`.tile[data-letter="${letter}"]`);
 
-                // Disable tile immediately
                 targetTile.classList.add('disabled');
                 removeTileListeners(targetTile, moveBackToOriginal);
 
                 const animatedTile = targetTile.cloneNode(true);
                 animatedTile.classList.add('moving');
-                targetLine.appendChild(animatedTile);
+                container.appendChild(animatedTile);
 
                 const targetRect = targetTile.getBoundingClientRect();
-                const targetLineRect = targetLine.getBoundingClientRect();
-                const startX = targetRect.left - targetLineRect.left;
-                const startY = targetRect.top - targetLineRect.top;
+                const containerRect = container.getBoundingClientRect();
+                const startX = targetRect.left - containerRect.left;
+                const startY = targetRect.top - containerRect.top;
 
                 animatedTile.style.left = `${startX}px`;
                 animatedTile.style.top = `${startY}px`;
+                animatedTile.style.visibility = 'visible'; // Ensure it’s visible
 
-                const originalRect = originalTile.getBoundingClientRect();
-                const originalLineRect = originalLine.getBoundingClientRect();
-                const offsetX = originalRect.left - targetLineRect.left;
-                const offsetY = originalRect.top - targetLineRect.top;
+                const originalPos = tilePositions.get(letter);
 
                 requestAnimationFrame(() => {
-                    animatedTile.style.webkitTransform = `translate(${offsetX - startX}px, ${offsetY - startY}px)`;
-                    animatedTile.style.transform = `translate(${offsetX - startX}px, ${offsetY - startY}px)`;
+                    animatedTile.style.transform = `translate(${originalPos.x - startX}px, ${originalPos.y - startY}px)`;
                 });
 
                 setTimeout(() => {
                     originalTile.classList.remove('hidden');
                     targetTile.remove();
                     animatedTile.remove();
-                    // Re-apply full styles to ensure width is correct
-                    originalTile.style.width = '100px';
-                    originalTile.style.height = '100px';
                     originalTile.classList.remove('disabled');
-                    addTileListeners(originalTile, moveToTarget); // Re-add listeners
+                    addTileListeners(originalTile, moveToTarget);
+                    isAnimating = false;
                 }, 1000);
             };
 
