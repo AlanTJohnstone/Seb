@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="windows-1252"> <!-- Updated to UTF-8 for consistency -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Interactive Tile Grid with Animation</title>
     <style>
@@ -13,9 +13,9 @@
             margin: 0;
             background-color: #f0f0f0;
             font-family: 'Arial', sans-serif;
-            -webkit-user-select: none; /* Prevent text selection on iOS */
+            -webkit-user-select: none;
             user-select: none;
-            touch-action: manipulation; /* Prevent double-tap zoom on iOS */
+            touch-action: manipulation;
         }
 
         .container {
@@ -71,7 +71,11 @@
             position: absolute;
         }
 
-        /* Responsive adjustments */
+        .tile.disabled {
+            pointer-events: none; /* Prevents clicks/taps during animation */
+            opacity: 0.7; /* Visual feedback */
+        }
+
         @media (max-width: 600px) {
             .tile {
                 width: 80px;
@@ -111,48 +115,53 @@
             const addTileListeners = (tile, handler) => {
                 tile.addEventListener('click', handler);
                 tile.addEventListener('touchstart', (e) => {
-                    e.preventDefault(); // Prevent scrolling or other defaults
+                    e.preventDefault();
                     handler(e);
                 });
+            };
+
+            // Remove event listeners to prevent duplicates
+            const removeTileListeners = (tile, handler) => {
+                tile.removeEventListener('click', handler);
+                tile.removeEventListener('touchstart', handler);
             };
 
             // Animate and move tile from original to target
             const moveToTarget = (event) => {
                 const originalTile = event.currentTarget;
                 const letter = originalTile.dataset.letter;
-                
-                // Create a clone for animation
+
+                // Disable tile immediately
+                originalTile.classList.add('disabled');
+                removeTileListeners(originalTile, moveToTarget);
+
                 const animatedTile = originalTile.cloneNode(true);
                 animatedTile.classList.add('moving');
                 originalLine.appendChild(animatedTile);
 
-                // Get original tile’s position relative to the original line
                 const originalRect = originalTile.getBoundingClientRect();
                 const originalLineRect = originalLine.getBoundingClientRect();
                 const startX = originalRect.left - originalLineRect.left;
                 const startY = originalRect.top - originalLineRect.top;
 
-                // Set initial position to match the clicked tile
                 animatedTile.style.left = `${startX}px`;
                 animatedTile.style.top = `${startY}px`;
 
-                // Get target position (approximate end of target line)
                 const targetRect = targetLine.getBoundingClientRect();
                 const offsetX = targetRect.left - originalLineRect.left + targetLine.children.length * 120;
                 const offsetY = targetRect.top - originalLineRect.top;
 
-                // Trigger animation
                 requestAnimationFrame(() => {
                     animatedTile.style.webkitTransform = `translate(${offsetX - startX}px, ${offsetY - startY}px)`;
                     animatedTile.style.transform = `translate(${offsetX - startX}px, ${offsetY - startY}px)`;
                 });
 
-                // After animation, hide original, add to target, and clean up
                 setTimeout(() => {
                     originalTile.classList.add('hidden');
                     const newTile = createTile(letter);
                     targetLine.appendChild(newTile);
                     animatedTile.remove();
+                    originalTile.classList.remove('disabled'); // Re-enable after animation (though hidden)
                 }, 1000);
             };
 
@@ -162,38 +171,41 @@
                 const letter = targetTile.dataset.letter;
                 const originalTile = originalLine.querySelector(`.tile[data-letter="${letter}"]`);
 
-                // Create a clone for animation
+                // Disable tile immediately
+                targetTile.classList.add('disabled');
+                removeTileListeners(targetTile, moveBackToOriginal);
+
                 const animatedTile = targetTile.cloneNode(true);
                 animatedTile.classList.add('moving');
                 targetLine.appendChild(animatedTile);
 
-                // Get target tile’s position relative to the target line
                 const targetRect = targetTile.getBoundingClientRect();
                 const targetLineRect = targetLine.getBoundingClientRect();
                 const startX = targetRect.left - targetLineRect.left;
                 const startY = targetRect.top - targetLineRect.top;
 
-                // Set initial position to match the clicked tile
                 animatedTile.style.left = `${startX}px`;
                 animatedTile.style.top = `${startY}px`;
 
-                // Get original tile’s position (still in layout with visibility: hidden)
                 const originalRect = originalTile.getBoundingClientRect();
                 const originalLineRect = originalLine.getBoundingClientRect();
                 const offsetX = originalRect.left - targetLineRect.left;
                 const offsetY = originalRect.top - targetLineRect.top;
 
-                // Trigger animation directly to the original position
                 requestAnimationFrame(() => {
                     animatedTile.style.webkitTransform = `translate(${offsetX - startX}px, ${offsetY - startY}px)`;
                     animatedTile.style.transform = `translate(${offsetX - startX}px, ${offsetY - startY}px)`;
                 });
 
-                // After animation, show original, remove from target, and clean up
                 setTimeout(() => {
                     originalTile.classList.remove('hidden');
                     targetTile.remove();
                     animatedTile.remove();
+                    // Re-apply full styles to ensure width is correct
+                    originalTile.style.width = '100px';
+                    originalTile.style.height = '100px';
+                    originalTile.classList.remove('disabled');
+                    addTileListeners(originalTile, moveToTarget); // Re-add listeners
                 }, 1000);
             };
 
