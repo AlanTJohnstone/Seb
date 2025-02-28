@@ -138,205 +138,211 @@
     <div id="message"></div>
     <audio id="audioPlayer" controls></audio>
     <script>
-        const wordsList = ['Apple', 'Ball', 'Bed'];
-        const meaningsList = ['A fruit that keeps doctors away', 'It bounces and is used in many games', 'Where you sleep'];
-        const gameContainer = document.getElementById('game-container');
-        const mixedLine = document.getElementById('mixed-line');
-        const unmixedLine = document.getElementById('unmixed-line');
-        const message = document.getElementById('message');
-        const audioPlayer = document.getElementById('audioPlayer');
-        const startButton = document.getElementById('startButton');
-        const clueButton = document.getElementById('clueButton');
-        const subtitle = document.getElementById('subtitle');
-        let currentWord = "";
-        let currentMeaning = "";
-        let isAnimating = false;
-        const tilePositions = new Map();
+    const wordsList = ['Apple', 'Ball', 'Bed'];
+    const meaningsList = ['A fruit that keeps doctors away', 'It bounces and is used in many games', 'Where you sleep'];
+    const gameContainer = document.getElementById('game-container');
+    const mixedLine = document.getElementById('mixed-line');
+    const unmixedLine = document.getElementById('unmixed-line');
+    const message = document.getElementById('message');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const startButton = document.getElementById('startButton');
+    const clueButton = document.getElementById('clueButton');
+    const subtitle = document.getElementById('subtitle');
+    let currentWord = "";
+    let currentMeaning = "";
+    let isAnimating = false;
+    const tilePositions = new Map();
+    let tileCounter = 0; // Unique ID counter for tiles
 
-        startButton.addEventListener('click', () => {
-            startButton.style.display = 'none';
-            subtitle.style.display = 'none';
-            gameContainer.style.display = 'block';
-            clueButton.style.display = 'block';
-            startNewGame();
-        });
+    startButton.addEventListener('click', () => {
+        startButton.style.display = 'none';
+        subtitle.style.display = 'none';
+        gameContainer.style.display = 'block';
+        clueButton.style.display = 'block';
+        startNewGame();
+    });
 
-        clueButton.addEventListener('click', () => {
-            if (currentMeaning) {
-                audioPlayer.src = "anagramFiles/" + currentMeaning + ".mp3";
-                audioPlayer.play();
-            }
-        });
-
-        const chooseRandomWord = (wordsList) => {
-            const randomIndex = Math.floor(Math.random() * wordsList.length);
-            return [wordsList[randomIndex], meaningsList[randomIndex]];
-        };
-
-        const createTile = (letter, handler) => {
-            const tile = document.createElement('div');
-            tile.classList.add('tile');
-            tile.textContent = letter;
-            tile.dataset.letter = letter;
-            addTileListeners(tile, handler);
-            return tile;
-        };
-
-        const addTileListeners = (tile, handler) => {
-            tile.addEventListener('click', handleEvent(handler));
-            tile.addEventListener('touchstart', handleEvent(handler));
-        };
-
-        const removeTileListeners = (tile, handler) => {
-            tile.removeEventListener('click', handler);
-            tile.removeEventListener('touchstart', handler);
-        };
-
-        const handleEvent = (handler) => (e) => {
-            e.preventDefault();
-            if (isAnimating) return;
-            isAnimating = true;
-            handler(e);
-        };
-
-        const moveToUnmixed = (event) => {
-            const originalTile = event.currentTarget;
-            const letter = originalTile.dataset.letter;
-
-            originalTile.classList.add('disabled');
-            removeTileListeners(originalTile, moveToUnmixed);
-
-            const animatedTile = originalTile.cloneNode(true);
-            animatedTile.classList.add('moving');
-            gameContainer.appendChild(animatedTile);
-
-            const originalPos = tilePositions.get(letter + '-mixed');
-            animatedTile.style.left = `${originalPos.x}px`;
-            animatedTile.style.top = `${originalPos.y}px`;
-            animatedTile.style.visibility = 'visible';
-
-            originalTile.classList.add('hidden');
-
-            const targetRect = unmixedLine.getBoundingClientRect();
-            const containerRect = gameContainer.getBoundingClientRect();
-            const offsetX = targetRect.left - containerRect.left + unmixedLine.children.length * 100;
-            const offsetY = targetRect.top - containerRect.top;
-
-            requestAnimationFrame(() => {
-                animatedTile.style.transform = `translate(${offsetX - originalPos.x}px, ${offsetY - originalPos.y}px)`;
-            });
-
-            setTimeout(() => {
-                const newTile = createTile(letter, moveBackToMixed);
-                unmixedLine.appendChild(newTile);
-                animatedTile.remove();
-                originalTile.classList.remove('disabled');
-                isAnimating = false;
-                checkWord();
-            }, 1000);
-        };
-
-        const moveBackToMixed = (event) => {
-            const targetTile = event.currentTarget;
-            const letter = targetTile.dataset.letter;
-            const originalTile = mixedLine.querySelector(`.tile[data-letter="${letter}"]`);
-
-            targetTile.classList.add('disabled');
-            removeTileListeners(targetTile, moveBackToMixed);
-
-            targetTile.classList.add('hidden');
-
-            const animatedTile = targetTile.cloneNode(true);
-            animatedTile.classList.remove('hidden');
-            animatedTile.classList.add('moving');
-            gameContainer.appendChild(animatedTile);
-
-            const targetRect = targetTile.getBoundingClientRect();
-            const containerRect = gameContainer.getBoundingClientRect();
-            const startX = targetRect.left - containerRect.left;
-            const startY = targetRect.top - containerRect.top;
-
-            animatedTile.style.left = `${startX}px`;
-            animatedTile.style.top = `${startY}px`;
-            animatedTile.style.visibility = 'visible';
-
-            const originalPos = tilePositions.get(letter + '-mixed');
-
-            requestAnimationFrame(() => {
-                animatedTile.style.transform = `translate(${originalPos.x - startX}px, ${originalPos.y - startY}px)`;
-            });
-
-            setTimeout(() => {
-                originalTile.classList.remove('hidden');
-                targetTile.remove();
-                animatedTile.remove();
-                originalTile.classList.remove('disabled');
-                addTileListeners(originalTile, moveToUnmixed);
-                isAnimating = false;
-                checkWord();
-            }, 1000);
-        };
-
-        const checkWord = () => {
-            const currentOrder = Array.from(unmixedLine.children).map(tile => tile.textContent).join("");
-            if (currentOrder === currentWord) {
-                message.textContent = "";
-                audioPlayer.src = "anagramFiles/well done.mp3";
-                audioPlayer.play();
-                audioPlayer.onended = () => {
-                    audioPlayer.src = "anagramFiles/" + currentWord + ".mp3";
-                    audioPlayer.play();
-                    audioPlayer.onended = null;
-                    setTimeout(() => {
-                        startNewGame();
-                    }, 5000);
-                };
-            }
-        };
-
-        const initializeGame = (word, meaning) => {
-            currentWord = word;
-            currentMeaning = meaning;
-            const letters = word.split("");
-            let shuffledLetters;
-            do {
-                shuffledLetters = [...letters];
-                shuffle(shuffledLetters);
-            } while (shuffledLetters.join("") === word);
-
-            mixedLine.innerHTML = '';
-            unmixedLine.innerHTML = '';
-            tilePositions.clear();
-
-            shuffledLetters.forEach((letter) => {
-                const tile = createTile(letter, moveToUnmixed);
-                mixedLine.appendChild(tile);
-            });
-
-            mixedLine.querySelectorAll('.tile').forEach(tile => {
-                const rect = tile.getBoundingClientRect();
-                const containerRect = gameContainer.getBoundingClientRect();
-                tilePositions.set(tile.dataset.letter + '-mixed', {
-                    x: rect.left - containerRect.left,
-                    y: rect.top - containerRect.top
-                });
-            });
-
-            audioPlayer.src = "anagramFiles/" + meaning + ".mp3";
+    clueButton.addEventListener('click', () => {
+        if (currentMeaning) {
+            audioPlayer.src = "anagramFiles/" + currentMeaning + ".mp3";
             audioPlayer.play();
-        };
+        }
+    });
 
-        const startNewGame = () => {
-            const [randomWord, randomMeaning] = chooseRandomWord(wordsList);
-            initializeGame(randomWord, randomMeaning);
-        };
+    const chooseRandomWord = (wordsList) => {
+        const randomIndex = Math.floor(Math.random() * wordsList.length);
+        return [wordsList[randomIndex], meaningsList[randomIndex]];
+    };
 
-        const shuffle = (array) => {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-        };
-    </script>
+    const createTile = (letter, handler) => {
+        const tile = document.createElement('div');
+        tile.classList.add('tile');
+        tile.textContent = letter;
+        tile.dataset.letter = letter;
+        tile.dataset.id = `tile-${tileCounter++}`; // Assign unique ID
+        addTileListeners(tile, handler);
+        return tile;
+    };
+
+    const addTileListeners = (tile, handler) => {
+        tile.addEventListener('click', handleEvent(handler));
+        tile.addEventListener('touchstart', handleEvent(handler));
+    };
+
+    const removeTileListeners = (tile, handler) => {
+        tile.removeEventListener('click', handler);
+        tile.removeEventListener('touchstart', handler);
+    };
+
+    const handleEvent = (handler) => (e) => {
+        e.preventDefault();
+        if (isAnimating) return;
+        isAnimating = true;
+        handler(e);
+    };
+
+    const moveToUnmixed = (event) => {
+        const originalTile = event.currentTarget;
+        const letter = originalTile.dataset.letter;
+        const tileId = originalTile.dataset.id;
+
+        originalTile.classList.add('disabled');
+        removeTileListeners(originalTile, moveToUnmixed);
+
+        const animatedTile = originalTile.cloneNode(true);
+        animatedTile.classList.add('moving');
+        gameContainer.appendChild(animatedTile);
+
+        const originalPos = tilePositions.get(tileId);
+        animatedTile.style.left = `${originalPos.x}px`;
+        animatedTile.style.top = `${originalPos.y}px`;
+        animatedTile.style.visibility = 'visible';
+
+        originalTile.classList.add('hidden');
+
+        const targetRect = unmixedLine.getBoundingClientRect();
+        const containerRect = gameContainer.getBoundingClientRect();
+        const offsetX = targetRect.left - containerRect.left + unmixedLine.children.length * 100;
+        const offsetY = targetRect.top - containerRect.top;
+
+        requestAnimationFrame(() => {
+            animatedTile.style.transform = `translate(${offsetX - originalPos.x}px, ${offsetY - originalPos.y}px)`;
+        });
+
+        setTimeout(() => {
+            const newTile = createTile(letter, moveBackToMixed);
+            newTile.dataset.originalId = tileId; // Link to original tile
+            unmixedLine.appendChild(newTile);
+            animatedTile.remove();
+            originalTile.classList.remove('disabled');
+            isAnimating = false;
+            checkWord();
+        }, 1000);
+    };
+
+    const moveBackToMixed = (event) => {
+        const targetTile = event.currentTarget;
+        const letter = targetTile.dataset.letter;
+        const originalTileId = targetTile.dataset.originalId;
+        const originalTile = mixedLine.querySelector(`.tile[data-id="${originalTileId}"]`);
+
+        targetTile.classList.add('disabled');
+        removeTileListeners(targetTile, moveBackToMixed);
+
+        targetTile.classList.add('hidden');
+
+        const animatedTile = targetTile.cloneNode(true);
+        animatedTile.classList.remove('hidden');
+        animatedTile.classList.add('moving');
+        gameContainer.appendChild(animatedTile);
+
+        const targetRect = targetTile.getBoundingClientRect();
+        const containerRect = gameContainer.getBoundingClientRect();
+        const startX = targetRect.left - containerRect.left;
+        const startY = targetRect.top - containerRect.top;
+
+        animatedTile.style.left = `${startX}px`;
+        animatedTile.style.top = `${startY}px`;
+        animatedTile.style.visibility = 'visible';
+
+        const originalPos = tilePositions.get(originalTileId);
+
+        requestAnimationFrame(() => {
+            animatedTile.style.transform = `translate(${originalPos.x - startX}px, ${originalPos.y - startY}px)`;
+        });
+
+        setTimeout(() => {
+            originalTile.classList.remove('hidden');
+            targetTile.remove();
+            animatedTile.remove();
+            originalTile.classList.remove('disabled');
+            addTileListeners(originalTile, moveToUnmixed);
+            isAnimating = false;
+            checkWord();
+        }, 1000);
+    };
+
+    const checkWord = () => {
+        const currentOrder = Array.from(unmixedLine.children).map(tile => tile.textContent).join("");
+        if (currentOrder === currentWord) {
+            message.textContent = "";
+            audioPlayer.src = "anagramFiles/well done.mp3";
+            audioPlayer.play();
+            audioPlayer.onended = () => {
+                audioPlayer.src = "anagramFiles/" + currentWord + ".mp3";
+                audioPlayer.play();
+                audioPlayer.onended = null;
+                setTimeout(() => {
+                    startNewGame();
+                }, 5000);
+            };
+        }
+    };
+
+    const initializeGame = (word, meaning) => {
+        currentWord = word;
+        currentMeaning = meaning;
+        const letters = word.split("");
+        let shuffledLetters;
+        do {
+            shuffledLetters = [...letters];
+            shuffle(shuffledLetters);
+        } while (shuffledLetters.join("") === word);
+
+        mixedLine.innerHTML = '';
+        unmixedLine.innerHTML = '';
+        tilePositions.clear();
+        tileCounter = 0; // Reset counter for new game
+
+        shuffledLetters.forEach((letter) => {
+            const tile = createTile(letter, moveToUnmixed);
+            mixedLine.appendChild(tile);
+        });
+
+        mixedLine.querySelectorAll('.tile').forEach(tile => {
+            const rect = tile.getBoundingClientRect();
+            const containerRect = gameContainer.getBoundingClientRect();
+            tilePositions.set(tile.dataset.id, {
+                x: rect.left - containerRect.left,
+                y: rect.top - containerRect.top
+            });
+        });
+
+        audioPlayer.src = "anagramFiles/" + meaning + ".mp3";
+        audioPlayer.play();
+    };
+
+    const startNewGame = () => {
+        const [randomWord, randomMeaning] = chooseRandomWord(wordsList);
+        initializeGame(randomWord, randomMeaning);
+    };
+
+    const shuffle = (array) => {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    };
+</script>
 </body>
 </html>
