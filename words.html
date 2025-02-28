@@ -1,107 +1,325 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="windows-1252">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seb's Word Clicker Game</title>
+    <title>Seb's Sayings</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 50px;
-        }
-        .word {
-            display: inline-block;
-            margin: 10px;
-            padding: 20px;
-            font-size:30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
             background-color: #f0f0f0;
-            border: 1px solid #ccc;
-            cursor: pointer;
-        }
-        .word:hover {
-            background-color: #ddd;
-        }
-        h1 {
-            font-size: 50px;  /* Increase title font size */
-        }
-        h2 {
-            font-size: 28px;  /* Increase subtitle font size */
-        }
-        #startButton {
-            font-size: 30px;  /* Increase start button font size */
-            padding: 10px 20px;
             font-family: Arial, sans-serif;
+            user-select: none;
+            touch-action: manipulation;
         }
-        #playAgainButton {
-            display: none;
-            font-size: 30px;  /* Set font size for play again button */
-            padding: 10px 20px;
-            font-family: Arial, sans-serif;
-            margin: 20px auto; /* Center the play again button */
+        h1 { margin: 20px 0; font-size: 60px; }
+        h2, button { margin: 20px 0; font-size: 40px; }
+        .game-container { width: 800px; margin: 50px auto; position: relative; }
+        .line-container {
+            display: grid;
+            grid-template-columns: 140px 1fr; /* Increased from 120px to 140px */
+            gap: 10px;
+            margin-bottom: 100px;
+        }
+        .description {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            font-size: 30px;
+        }
+        .text {
+            width: 110px; /* Increased from 100px to 110px */
+            display: inline-block;
+            text-align: right;
+            padding-right: 10px; /* Increased from 5px to 10px */
+        }
+        .colon {
+            flex-shrink: 0; /* Prevent colon from shrinking */
+        }
+        .tile-line { display: flex; justify-content: flex-start; gap: 20px; flex-wrap: wrap; }
+        .tile { 
+            background-color: lightblue; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-size: 25px; 
+            cursor: pointer; 
+            padding: 10px; 
+            text-align: center; 
+            white-space: nowrap; 
+            transition: transform 0.3s ease, background-color 0.2s ease; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); 
+            position: relative; 
+            z-index: 1; 
+        }
+        .tile.long-text { font-size: 15px; }
+        .tile:hover { background-color: #add8e6; transform: scale(1.05); }
+        .tile.moving { position: absolute; z-index: 10; transition: all 1s ease; visibility: visible !important; }
+        .tile.hidden { visibility: hidden; }
+        .tile.disabled { pointer-events: none; opacity: 0.7; }
+        #message { margin-top: 20px; font-size: 24px; color: green; }
+        #audioPlayer { display: none; }
+        @media (max-width: 600px) {
+            .game-container { width: 100%; }
+            .line-container { grid-template-columns: 100px 1fr; }
+            .text { width: 80px; }
+            .description { font-size: 25px; }
+            .tile { font-size: 20px; padding: 8px; }
+            .tile.long-text { font-size: 12px; }
         }
     </style>
 </head>
 <body>
-    <h1>Seb's Words</h1>
-    <h2>Click on the word you hear</h2>
+    <h1>Seb's Sayings</h1>
+    <h2 id="subtitle">Move the words to make a well-known saying</h2>
     <button id="startButton">Start</button>
-    <div id="wordsContainer"></div>
-    <button id="playAgainButton">Play word again</button>
-
+    <div class="game-container" id="game-container" style="display: none;">
+        <div class="line-container">
+            <div class="description">
+                <span class="text">mixed</span><span class="colon">:</span>
+            </div>
+            <div class="tile-line" id="mixed-line"></div>
+        </div>
+        <div class="line-container">
+            <div class="description">
+                <span class="text">unmixed</span><span class="colon">:</span>
+            </div>
+            <div class="tile-line" id="unmixed-line"></div>
+        </div>
+    </div>
+    <button id="clueButton" style="display: none;">Clue</button>
+    <div id="message"></div>
+    <audio id="audioPlayer" controls></audio>
     <script>
-        const wordString = "the,of,and,to,a,in,is,it,you,that,he,was,for,on,are,as,with,his,they,I,at,be,this,have,from,or,one,had,by,word,but,not,what,all,were,we,when,your,can,said,there,use,an,each,which,she,do,how,their,if,will,up,other,about,out,many,then,them,these,so,some,her,would,make,like,him,into,time,has,look,two,more,write,go,see,number,no,way,could,people,my,than,first,water,been,call,who,oil,its,now,find,long,down,day,did,get,come,made,may,part";
-        const wordList = wordString.split(',');
+         const sayingsList = [
+            'A picture is worth a thousand words', 'Actions speak louder than words',
+            'Better late than never', 'Birds of a feather flock together',
+            'Every cloud has a silver lining', 'Fortune favors the bold',
+            'Honesty is the best policy', 'Hope for the best prepare for the worst',
+            'If it aint broke dont fix it', 'Its better to give than to receive',
+            'Laughter is the best medicine', 'Practice makes perfect',
+            'Rome wasnt built in a day', 'The early bird catches the worm',
+            'The pen is mightier than the sword', 'Time flies when youre having fun',
+            'Two heads are better than one', 'When in Rome do as the Romans do',
+            'Where theres a will theres a way', 'You cant judge a book by its cover'
+        ];
+        const gameContainer = document.getElementById('game-container');
+        const mixedLine = document.getElementById('mixed-line');
+        const unmixedLine = document.getElementById('unmixed-line');
+        const message = document.getElementById('message');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const startButton = document.getElementById('startButton');
+        const clueButton = document.getElementById('clueButton');
+        const subtitle = document.getElementById('subtitle');
+        let currentSaying = "";
+        let originalWordOrder = [];
+        let isAnimating = false;
+        const tilePositions = new Map();
+        let tileCounter = 0;
 
-        function getRandomWords(list, count) {
-            const shuffled = [...list].sort(() => 0.5 - Math.random());
-            return shuffled.slice(0, count);
-        }
+        startButton.addEventListener('click', () => {
+            startButton.style.display = 'none';
+            subtitle.style.display = 'none';
+            gameContainer.style.display = 'block';
+            clueButton.style.display = 'block';
+            startNewGame();
+        });
 
-        function playAudio(fileName, callback) {
-            const audio = new Audio('wordFiles/'+fileName);
-            console.log(audio);
-	    audio.play();
-            audio.onended = callback;
-        }
+        clueButton.addEventListener('click', () => {
+            if (currentSaying) {
+                audioPlayer.src = "sayings/" + currentSaying + ".mp3";
+                audioPlayer.play();
+            }
+        });
 
-        function startGame() {
-            const wordsContainer = document.getElementById('wordsContainer');
-            wordsContainer.innerHTML = '';
-            document.getElementById('playAgainButton').style.display = 'none';
+        const chooseRandomSaying = (sayingsList) => {
+            const randomIndex = Math.floor(Math.random() * sayingsList.length);
+            return sayingsList[randomIndex];
+        };
 
-            const selectedWords = getRandomWords(wordList, 5);
-            const targetWord = selectedWords[Math.floor(Math.random() * selectedWords.length)];
+        const createTile = (word, handler, originalIndex) => {
+            const tile = document.createElement('div');
+            tile.classList.add('tile');
+            tile.textContent = word;
+            tile.dataset.word = word;
+            tile.dataset.id = `tile-${tileCounter++}`;
+            tile.dataset.originalIndex = originalIndex;
+            if (word.length > 10) tile.classList.add('long-text');
+            addTileListeners(tile, handler);
+            return tile;
+        };
 
-            playAudio(`${targetWord}.mp3`, null);  // Play the first word without delay
+        const addTileListeners = (tile, handler) => {
+            tile.addEventListener('click', handleEvent(handler));
+            tile.addEventListener('touchstart', handleEvent(handler));
+        };
 
-            document.getElementById('playAgainButton').onclick = () => {
-                playAudio(`${targetWord}.mp3`, null);  // Play the chosen word again
-            };
+        const removeTileListeners = (tile, handler) => {
+            tile.removeEventListener('click', handler);
+            tile.removeEventListener('touchstart', handler);
+        };
 
-            selectedWords.forEach(word => {
-                const wordElement = document.createElement('div');
-                wordElement.className = 'word';
-                wordElement.textContent = word;
-                wordElement.onclick = () => {
-                    if (word === targetWord) {
-                        playAudio('correctSound.mp3', () => {
-                            setTimeout(startGame, 1000);  // Add a 1-second delay before starting the next word
-                        });
-                    } else {
-                        playAudio('wrongSound.mp3', null);
-                    }
-                };
-                wordsContainer.appendChild(wordElement);
+        const handleEvent = (handler) => (e) => {
+            e.preventDefault();
+            if (isAnimating) return;
+            isAnimating = true;
+            handler(e);
+        };
+
+        const moveToUnmixed = (event) => {
+            const originalTile = event.currentTarget;
+            const word = originalTile.dataset.word;
+            const tileId = originalTile.dataset.id;
+            const originalIndex = originalTile.dataset.originalIndex;
+
+            originalTile.classList.add('disabled');
+            removeTileListeners(originalTile, moveToUnmixed);
+
+            const animatedTile = originalTile.cloneNode(true);
+            animatedTile.classList.add('moving');
+            gameContainer.appendChild(animatedTile);
+
+            const originalPos = tilePositions.get(tileId);
+            animatedTile.style.left = `${originalPos.x}px`;
+            animatedTile.style.top = `${originalPos.y}px`;
+            animatedTile.style.visibility = 'visible';
+
+            originalTile.classList.add('hidden');
+
+            const targetRect = unmixedLine.getBoundingClientRect();
+            const containerRect = gameContainer.getBoundingClientRect();
+            let offsetX = targetRect.left - containerRect.left;
+            for (let tile of unmixedLine.children) {
+                offsetX += tile.getBoundingClientRect().width + 20;
+            }
+            const offsetY = targetRect.top - containerRect.top;
+
+            requestAnimationFrame(() => {
+                animatedTile.style.transform = `translate(${offsetX - originalPos.x}px, ${offsetY - originalPos.y}px)`;
             });
 
-            document.getElementById('playAgainButton').style.display = 'block';  // Show the play again button
-        }
+            setTimeout(() => {
+                const newTile = createTile(word, moveBackToMixed, originalIndex);
+                newTile.dataset.originalId = tileId;
+                unmixedLine.appendChild(newTile);
+                animatedTile.remove();
+                originalTile.classList.remove('disabled');
+                isAnimating = false;
+                checkOrder();
+            }, 1000);
+        };
 
-        document.getElementById('startButton').onclick = () => {
-            document.querySelector('h2').style.display = 'none';
-            document.getElementById('startButton').style.display = 'none';
-            startGame();
+        const moveBackToMixed = (event) => {
+            const targetTile = event.currentTarget;
+            const word = targetTile.dataset.word;
+            const originalTileId = targetTile.dataset.originalId;
+            const originalTile = mixedLine.querySelector(`.tile[data-id="${originalTileId}"]`);
+
+            targetTile.classList.add('disabled');
+            removeTileListeners(targetTile, moveBackToMixed);
+
+            targetTile.classList.add('hidden');
+
+            const animatedTile = targetTile.cloneNode(true);
+            animatedTile.classList.remove('hidden');
+            animatedTile.classList.add('moving');
+            gameContainer.appendChild(animatedTile);
+
+            const targetRect = targetTile.getBoundingClientRect();
+            const containerRect = gameContainer.getBoundingClientRect();
+            const startX = targetRect.left - containerRect.left;
+            const startY = targetRect.top - containerRect.top;
+
+            animatedTile.style.left = `${startX}px`;
+            animatedTile.style.top = `${startY}px`;
+            animatedTile.style.visibility = 'visible';
+
+            const originalPos = tilePositions.get(originalTileId);
+
+            requestAnimationFrame(() => {
+                animatedTile.style.transform = `translate(${originalPos.x - startX}px, ${originalPos.y - startY}px)`;
+            });
+
+            setTimeout(() => {
+                originalTile.classList.remove('hidden');
+                targetTile.remove();
+                animatedTile.remove();
+                originalTile.classList.remove('disabled');
+                addTileListeners(originalTile, moveToUnmixed);
+                isAnimating = false;
+                checkOrder();
+            }, 1000);
+        };
+
+        const checkOrder = () => {
+            const currentTiles = Array.from(unmixedLine.children);
+            if (currentTiles.length !== originalWordOrder.length) return;
+
+            const isCorrect = currentTiles.every((tile, index) => 
+                tile.dataset.word === originalWordOrder[index]
+            );
+
+            if (isCorrect) {
+                message.textContent = "";
+                audioPlayer.src = "sayings/well done.mp3";
+                audioPlayer.play();
+                audioPlayer.onended = () => {
+                    audioPlayer.src = "sayings/" + currentSaying + ".mp3";
+                    audioPlayer.play();
+                    audioPlayer.onended = null;
+                    setTimeout(() => {
+                        startNewGame();
+                    }, 5000);
+                };
+            }
+        };
+
+        const initializeGame = (saying) => {
+            currentSaying = saying;
+            const words = saying.split(" ");
+            originalWordOrder = words;
+            let shuffledWords;
+            do {
+                shuffledWords = [...words];
+                shuffle(shuffledWords);
+            } while (shuffledWords.join(" ") === saying);
+
+            mixedLine.innerHTML = '';
+            unmixedLine.innerHTML = '';
+            tilePositions.clear();
+            tileCounter = 0;
+
+            shuffledWords.forEach((word, shuffledIndex) => {
+                const originalIndex = originalWordOrder.indexOf(word, shuffledWords.slice(0, shuffledIndex).filter(w => w === word).length);
+                const tile = createTile(word, moveToUnmixed, originalIndex);
+                mixedLine.appendChild(tile);
+            });
+
+            mixedLine.querySelectorAll('.tile').forEach(tile => {
+                const rect = tile.getBoundingClientRect();
+                const containerRect = gameContainer.getBoundingClientRect();
+                tilePositions.set(tile.dataset.id, {
+                    x: rect.left - containerRect.left,
+                    y: rect.top - containerRect.top
+                });
+            });
+        };
+
+        const startNewGame = () => {
+            const randomSaying = chooseRandomSaying(sayingsList);
+            initializeGame(randomSaying);
+        };
+
+        const shuffle = (array) => {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
         };
     </script>
 </body>
