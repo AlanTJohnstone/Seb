@@ -9,10 +9,12 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: start;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
+            background-color: #f0f0f0;
             font-family: Arial, sans-serif;
+            user-select: none;
+            touch-action: manipulation;
         }
         h1 {
             margin: 20px 0;
@@ -22,25 +24,68 @@
             margin: 20px 0;
             font-size: 40px;
         }
-        .container {
-            display: flex;
-            margin-top: 50px;
+        .game-container {
+            width: 800px;
+            margin: 50px auto;
+            position: relative;
         }
-        .tile {
-            margin: 10px;
-            background-color: lightblue;
+        .line-container {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 10px;
+            margin-bottom: 100px;
+        }
+        .description {
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-end;
             font-size: 40px;
-            cursor: grab;
-            padding: 10px;
-            text-align: center;
-            white-space: nowrap;
         }
-        .tile.long-text {
-            font-size: 20px;
-            width: auto;
+        .text {
+            width: 160px;
+            display: inline-block;
+            text-align: right;
+        }
+        .colon {
+            margin-left: 5px;
+        }
+        .tile-line {
+            display: flex;
+            justify-content: flex-start;
+            gap: 20px;
+        }
+        .tile {
+            width: 80px;
+            height: 80px;
+            background-color: lightblue;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s ease, background-color 0.2s ease;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 1;
+        }
+        .tile:hover {
+            background-color: #add8e6;
+            transform: scale(1.05);
+        }
+        .tile.moving {
+            position: absolute;
+            z-index: 10;
+            transition: all 1s ease;
+            visibility: visible !important;
+        }
+        .tile.hidden {
+            visibility: hidden;
+        }
+        .tile.disabled {
+            pointer-events: none;
+            opacity: 0.7;
         }
         #message {
             margin-top: 20px;
@@ -50,22 +95,54 @@
         #audioPlayer {
             display: none;
         }
+        @media (max-width: 600px) {
+            .game-container {
+                width: 100%;
+            }
+            .line-container {
+                grid-template-columns: 140px 1fr;
+            }
+            .text {
+                width: 120px;
+            }
+            .description {
+                font-size: 30px;
+            }
+            .tile {
+                width: 60px;
+                height: 60px;
+                font-size: 30px;
+            }
+        }
     </style>
 </head>
 <body>
     <h1>Seb's Anagrams</h1>
     <h2 id="subtitle">Spell the correct word</h2>
     <button id="startButton">Start</button>
-    <div class="container" id="container" style="display: none;">
-        <!-- Tiles will be inserted here by JavaScript -->
+    <div class="game-container" id="game-container" style="display: none;">
+        <div class="line-container">
+            <div class="description">
+                <span class="text">mixed</span><span class="colon">:</span>
+            </div>
+            <div class="tile-line" id="mixed-line"></div>
+        </div>
+        <div class="line-container">
+            <div class="description">
+                <span class="text">unmixed</span><span class="colon">:</span>
+            </div>
+            <div class="tile-line" id="unmixed-line"></div>
+        </div>
     </div>
     <button id="clueButton" style="display: none;">Hear the Meaning again</button>
     <div id="message"></div>
     <audio id="audioPlayer" controls></audio>
     <script>
-        const wordsList = ['Apple', 'Ball', 'Bed', 'Book', 'Brush', 'Car', 'Chair', 'Clock', 'Crayon', 'Cup', 'Doll', 'Door', 'Fish', 'Fork', 'Globe', 'Hat', 'Lamp', 'Plate', 'Plant', 'Rock', 'Shoe', 'Spoon', 'Table', 'Teddy', 'Truck', 'Tree', 'Vase', 'Watch', 'Whale', 'Zebra'];
-        const meaningsList = ['A fruit that keeps doctors away', 'It bounces and is used in many games', 'Where you sleep', 'Pages you read for stories or knowledge', 'Used to comb hair or paint', 'Vehicle with four wheels', 'A place to sit', 'Tells time', 'Used to draw colorful pictures', 'Holds your drinks', "A childs toy figure", 'Entrance to a room or building', 'Lives in water', 'Used to eat food', 'A model of Earth', 'Worn on the head', 'Gives light', 'Holds food', 'Grows in soil', 'Hard natural material', 'Worn on the feet', 'Used to eat liquid food', 'Flat surface for eating or working', 'A soft stuffed bear', 'Large vehicle for transporting goods', 'Tall plant with branches', 'Holds flowers', 'Worn on the wrist to tell time', 'Large marine animal', 'Black and white striped animal'];
-        const container = document.getElementById('container');
+        const wordsList = ['Apple', 'Ball', 'Bed'];
+        const meaningsList = ['A fruit that keeps doctors away', 'It bounces and is used in many games', 'Where you sleep'];
+        const gameContainer = document.getElementById('game-container');
+        const mixedLine = document.getElementById('mixed-line');
+        const unmixedLine = document.getElementById('unmixed-line');
         const message = document.getElementById('message');
         const audioPlayer = document.getElementById('audioPlayer');
         const startButton = document.getElementById('startButton');
@@ -73,11 +150,13 @@
         const subtitle = document.getElementById('subtitle');
         let currentWord = "";
         let currentMeaning = "";
+        let isAnimating = false;
+        const tilePositions = new Map();
 
         startButton.addEventListener('click', () => {
             startButton.style.display = 'none';
             subtitle.style.display = 'none';
-            container.style.display = 'flex';
+            gameContainer.style.display = 'block';
             clueButton.style.display = 'block';
             startNewGame();
         });
@@ -94,6 +173,127 @@
             return [wordsList[randomIndex], meaningsList[randomIndex]];
         };
 
+        const createTile = (letter, handler) => {
+            const tile = document.createElement('div');
+            tile.classList.add('tile');
+            tile.textContent = letter;
+            tile.dataset.letter = letter;
+            addTileListeners(tile, handler);
+            return tile;
+        };
+
+        const addTileListeners = (tile, handler) => {
+            tile.addEventListener('click', handleEvent(handler));
+            tile.addEventListener('touchstart', handleEvent(handler));
+        };
+
+        const removeTileListeners = (tile, handler) => {
+            tile.removeEventListener('click', handler);
+            tile.removeEventListener('touchstart', handler);
+        };
+
+        const handleEvent = (handler) => (e) => {
+            e.preventDefault();
+            if (isAnimating) return;
+            isAnimating = true;
+            handler(e);
+        };
+
+        const moveToUnmixed = (event) => {
+            const originalTile = event.currentTarget;
+            const letter = originalTile.dataset.letter;
+
+            originalTile.classList.add('disabled');
+            removeTileListeners(originalTile, moveToUnmixed);
+
+            const animatedTile = originalTile.cloneNode(true);
+            animatedTile.classList.add('moving');
+            gameContainer.appendChild(animatedTile);
+
+            const originalPos = tilePositions.get(letter + '-mixed');
+            animatedTile.style.left = `${originalPos.x}px`;
+            animatedTile.style.top = `${originalPos.y}px`;
+            animatedTile.style.visibility = 'visible';
+
+            originalTile.classList.add('hidden');
+
+            const targetRect = unmixedLine.getBoundingClientRect();
+            const containerRect = gameContainer.getBoundingClientRect();
+            const offsetX = targetRect.left - containerRect.left + unmixedLine.children.length * 100;
+            const offsetY = targetRect.top - containerRect.top;
+
+            requestAnimationFrame(() => {
+                animatedTile.style.transform = `translate(${offsetX - originalPos.x}px, ${offsetY - originalPos.y}px)`;
+            });
+
+            setTimeout(() => {
+                const newTile = createTile(letter, moveBackToMixed);
+                unmixedLine.appendChild(newTile);
+                animatedTile.remove();
+                originalTile.classList.remove('disabled');
+                isAnimating = false;
+                checkWord();
+            }, 1000);
+        };
+
+        const moveBackToMixed = (event) => {
+            const targetTile = event.currentTarget;
+            const letter = targetTile.dataset.letter;
+            const originalTile = mixedLine.querySelector(`.tile[data-letter="${letter}"]`);
+
+            targetTile.classList.add('disabled');
+            removeTileListeners(targetTile, moveBackToMixed);
+
+            targetTile.classList.add('hidden');
+
+            const animatedTile = targetTile.cloneNode(true);
+            animatedTile.classList.remove('hidden');
+            animatedTile.classList.add('moving');
+            gameContainer.appendChild(animatedTile);
+
+            const targetRect = targetTile.getBoundingClientRect();
+            const containerRect = gameContainer.getBoundingClientRect();
+            const startX = targetRect.left - containerRect.left;
+            const startY = targetRect.top - containerRect.top;
+
+            animatedTile.style.left = `${startX}px`;
+            animatedTile.style.top = `${startY}px`;
+            animatedTile.style.visibility = 'visible';
+
+            const originalPos = tilePositions.get(letter + '-mixed');
+
+            requestAnimationFrame(() => {
+                animatedTile.style.transform = `translate(${originalPos.x - startX}px, ${originalPos.y - startY}px)`;
+            });
+
+            setTimeout(() => {
+                originalTile.classList.remove('hidden');
+                targetTile.remove();
+                animatedTile.remove();
+                originalTile.classList.remove('disabled');
+                addTileListeners(originalTile, moveToUnmixed);
+                isAnimating = false;
+                checkWord();
+            }, 1000);
+        };
+
+        const checkWord = () => {
+            const currentOrder = Array.from(unmixedLine.children).map(tile => tile.textContent).join("");
+            if (currentOrder === currentWord) {
+                message.textContent = "";
+                audioPlayer.src = "anagramFiles/well done.mp3";
+                audioPlayer.play();
+                audioPlayer.onended = () => {
+                    audioPlayer.src = "anagramFiles/" + currentWord + ".mp3";
+                    audioPlayer.play();
+                    audioPlayer.onended = null;
+                    setTimeout(() => {
+                        startNewGame();
+                    }, 5000);
+                };
+            }
+        };
+
         const initializeGame = (word, meaning) => {
             currentWord = word;
             currentMeaning = meaning;
@@ -104,61 +304,21 @@
                 shuffle(shuffledLetters);
             } while (shuffledLetters.join("") === word);
 
-            container.innerHTML = '';
-            shuffledLetters.forEach((letter, index) => {
-                const tile = document.createElement('div');
-                tile.className = 'tile';
-                tile.textContent = letter;
-                tile.draggable = true;
-                tile.id = 'tile' + index;
-                container.appendChild(tile);
+            mixedLine.innerHTML = '';
+            unmixedLine.innerHTML = '';
+            tilePositions.clear();
+
+            shuffledLetters.forEach((letter) => {
+                const tile = createTile(letter, moveToUnmixed);
+                mixedLine.appendChild(tile);
             });
 
-            const tiles = document.querySelectorAll('.tile');
-            let draggedTile = null;
-
-            tiles.forEach(tile => {
-                tile.addEventListener('dragstart', (e) => {
-                    draggedTile = tile;
-                    e.dataTransfer.effectAllowed = 'move';
-                });
-
-                tile.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                });
-
-                tile.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    if (draggedTile !== tile) {
-                        const allTiles = Array.from(container.children);
-                        const draggedIndex = allTiles.indexOf(draggedTile);
-                        const dropIndex = allTiles.indexOf(tile);
-
-                        if (draggedIndex < dropIndex) {
-                            container.insertBefore(draggedTile, tile.nextSibling);
-                        } else {
-                            container.insertBefore(draggedTile, tile);
-                        }
-
-                        const currentOrder = Array.from(container.children).map(tile => tile.textContent).join("");
-                        if (currentOrder === word) {
-                            message.textContent = "";
-                            audioPlayer.src = "anagramFiles/well done.mp3";
-                            audioPlayer.play();
-                            audioPlayer.onended = () => {
-                                audioPlayer.src = "anagramFiles/" + word + ".mp3";
-                                audioPlayer.play();
-                                audioPlayer.onended = null;
-                                setTimeout(() => {
-                                    startNewGame();
-                                }, 5000);
-                            };
-                        }
-                    }
-                });
-
-                tile.addEventListener('dragend', () => {
-                    draggedTile = null;
+            mixedLine.querySelectorAll('.tile').forEach(tile => {
+                const rect = tile.getBoundingClientRect();
+                const containerRect = gameContainer.getBoundingClientRect();
+                tilePositions.set(tile.dataset.letter + '-mixed', {
+                    x: rect.left - containerRect.left,
+                    y: rect.top - containerRect.top
                 });
             });
 
@@ -177,7 +337,6 @@
                 [array[i], array[j]] = [array[j], array[i]];
             }
         };
-
     </script>
 </body>
 </html>
