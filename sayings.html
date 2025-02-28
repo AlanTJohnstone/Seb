@@ -16,22 +16,12 @@
             user-select: none;
             touch-action: manipulation;
         }
-        h1 {
-            margin: 20px 0;
-            font-size: 60px;
-        }
-        h2, button {
-            margin: 20px 0;
-            font-size: 40px;
-        }
-        .game-container {
-            width: 800px;
-            margin: 50px auto;
-            position: relative;
-        }
+        h1 { margin: 20px 0; font-size: 60px; }
+        h2, button { margin: 20px 0; font-size: 40px; }
+        .game-container { width: 800px; margin: 50px auto; position: relative; }
         .line-container {
             display: grid;
-            grid-template-columns: 120px 1fr; /* Reduced from 200px to 120px */
+            grid-template-columns: 140px 1fr; /* Increased from 120px to 140px */
             gap: 10px;
             margin-bottom: 100px;
         }
@@ -39,86 +29,48 @@
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            font-size: 40px;
+            font-size: 30px;
         }
         .text {
-            width: 100px; /* Reduced from 160px to 100px */
+            width: 110px; /* Increased from 100px to 110px */
             display: inline-block;
             text-align: right;
+            padding-right: 10px; /* Increased from 5px to 10px */
         }
         .colon {
-            margin-left: 5px;
+            flex-shrink: 0; /* Prevent colon from shrinking */
         }
-        .tile-line {
-            display: flex;
-            justify-content: flex-start;
-            gap: 20px;
-            flex-wrap: wrap; /* Retained for very long sayings */
+        .tile-line { display: flex; justify-content: flex-start; gap: 20px; flex-wrap: wrap; }
+        .tile { 
+            background-color: lightblue; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-size: 25px; 
+            cursor: pointer; 
+            padding: 10px; 
+            text-align: center; 
+            white-space: nowrap; 
+            transition: transform 0.3s ease, background-color 0.2s ease; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); 
+            position: relative; 
+            z-index: 1; 
         }
-        .tile {
-            background-color: lightblue;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 25px; /* Reduced from 40px to 25px */
-            cursor: pointer;
-            padding: 10px;
-            text-align: center;
-            white-space: nowrap;
-            transition: transform 0.3s ease, background-color 0.2s ease;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            position: relative;
-            z-index: 1;
-        }
-        .tile.long-text {
-            font-size: 15px; /* Reduced from 20px to 15px */
-        }
-        .tile:hover {
-            background-color: #add8e6;
-            transform: scale(1.05);
-        }
-        .tile.moving {
-            position: absolute;
-            z-index: 10;
-            transition: all 1s ease;
-            visibility: visible !important;
-        }
-        .tile.hidden {
-            visibility: hidden;
-        }
-        .tile.disabled {
-            pointer-events: none;
-            opacity: 0.7;
-        }
-        #message {
-            margin-top: 20px;
-            font-size: 24px;
-            color: green;
-        }
-        #audioPlayer {
-            display: none;
-        }
+        .tile.long-text { font-size: 15px; }
+        .tile:hover { background-color: #add8e6; transform: scale(1.05); }
+        .tile.moving { position: absolute; z-index: 10; transition: all 1s ease; visibility: visible !important; }
+        .tile.hidden { visibility: hidden; }
+        .tile.disabled { pointer-events: none; opacity: 0.7; }
+        #message { margin-top: 20px; font-size: 24px; color: green; }
+        #audioPlayer { display: none; }
         @media (max-width: 600px) {
-            .game-container {
-                width: 100%;
-            }
-            .line-container {
-                grid-template-columns: 100px 1fr; /* Adjusted for smaller screens */
-            }
-            .text {
-                width: 80px; /* Adjusted for smaller screens */
-            }
-            .description {
-                font-size: 30px;
-            }
-            .tile {
-                font-size: 20px; /* Slightly smaller for mobile */
-                padding: 8px;
-            }
-            .tile.long-text {
-                font-size: 12px; /* Slightly smaller for mobile */
-            }
+            .game-container { width: 100%; }
+            .line-container { grid-template-columns: 100px 1fr; }
+            .text { width: 80px; }
+            .description { font-size: 25px; }
+            .tile { font-size: 20px; padding: 8px; }
+            .tile.long-text { font-size: 12px; }
         }
     </style>
 </head>
@@ -144,7 +96,7 @@
     <div id="message"></div>
     <audio id="audioPlayer" controls></audio>
     <script>
-        const sayingsList = [
+         const sayingsList = [
             'A picture is worth a thousand words', 'Actions speak louder than words',
             'Better late than never', 'Birds of a feather flock together',
             'Every cloud has a silver lining', 'Fortune favors the bold',
@@ -165,6 +117,7 @@
         const clueButton = document.getElementById('clueButton');
         const subtitle = document.getElementById('subtitle');
         let currentSaying = "";
+        let originalWordOrder = [];
         let isAnimating = false;
         const tilePositions = new Map();
         let tileCounter = 0;
@@ -189,12 +142,13 @@
             return sayingsList[randomIndex];
         };
 
-        const createTile = (word, handler) => {
+        const createTile = (word, handler, originalIndex) => {
             const tile = document.createElement('div');
             tile.classList.add('tile');
             tile.textContent = word;
             tile.dataset.word = word;
             tile.dataset.id = `tile-${tileCounter++}`;
+            tile.dataset.originalIndex = originalIndex;
             if (word.length > 10) tile.classList.add('long-text');
             addTileListeners(tile, handler);
             return tile;
@@ -221,6 +175,7 @@
             const originalTile = event.currentTarget;
             const word = originalTile.dataset.word;
             const tileId = originalTile.dataset.id;
+            const originalIndex = originalTile.dataset.originalIndex;
 
             originalTile.classList.add('disabled');
             removeTileListeners(originalTile, moveToUnmixed);
@@ -249,7 +204,7 @@
             });
 
             setTimeout(() => {
-                const newTile = createTile(word, moveBackToMixed);
+                const newTile = createTile(word, moveBackToMixed, originalIndex);
                 newTile.dataset.originalId = tileId;
                 unmixedLine.appendChild(newTile);
                 animatedTile.remove();
@@ -302,8 +257,14 @@
         };
 
         const checkOrder = () => {
-            const currentOrder = Array.from(unmixedLine.children).map(tile => tile.textContent).join(" ");
-            if (currentOrder === currentSaying) {
+            const currentTiles = Array.from(unmixedLine.children);
+            if (currentTiles.length !== originalWordOrder.length) return;
+
+            const isCorrect = currentTiles.every((tile, index) => 
+                tile.dataset.word === originalWordOrder[index]
+            );
+
+            if (isCorrect) {
                 message.textContent = "";
                 audioPlayer.src = "sayings/well done.mp3";
                 audioPlayer.play();
@@ -321,6 +282,7 @@
         const initializeGame = (saying) => {
             currentSaying = saying;
             const words = saying.split(" ");
+            originalWordOrder = words;
             let shuffledWords;
             do {
                 shuffledWords = [...words];
@@ -332,8 +294,9 @@
             tilePositions.clear();
             tileCounter = 0;
 
-            shuffledWords.forEach((word) => {
-                const tile = createTile(word, moveToUnmixed);
+            shuffledWords.forEach((word, shuffledIndex) => {
+                const originalIndex = originalWordOrder.indexOf(word, shuffledWords.slice(0, shuffledIndex).filter(w => w === word).length);
+                const tile = createTile(word, moveToUnmixed, originalIndex);
                 mixedLine.appendChild(tile);
             });
 
