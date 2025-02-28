@@ -9,10 +9,12 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: start;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
+            background-color: #f0f0f0;
             font-family: Arial, sans-serif;
+            user-select: none;
+            touch-action: manipulation;
         }
         h1 {
             margin: 20px 0;
@@ -22,36 +24,72 @@
             margin: 20px 0;
             font-size: 40px;
         }
-        .container {
-            display: flex;
-            margin-top: 50px;
-            overflow: hidden; /* Prevent overflow artifacts */
-            width: 100%; /* Ensure full width */
+        .game-container {
+            width: 800px;
+            margin: 50px auto;
+            position: relative;
         }
-        .tile {
-            margin: 10px;
-            background-color: lightblue;
+        .line-container {
+            display: grid;
+            grid-template-columns: 120px 1fr; /* Reduced from 200px to 120px */
+            gap: 10px;
+            margin-bottom: 100px;
+        }
+        .description {
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-end;
             font-size: 40px;
-            cursor: grab;
+        }
+        .text {
+            width: 100px; /* Reduced from 160px to 100px */
+            display: inline-block;
+            text-align: right;
+        }
+        .colon {
+            margin-left: 5px;
+        }
+        .tile-line {
+            display: flex;
+            justify-content: flex-start;
+            gap: 20px;
+            flex-wrap: wrap; /* Retained for very long sayings */
+        }
+        .tile {
+            background-color: lightblue;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 25px; /* Reduced from 40px to 25px */
+            cursor: pointer;
             padding: 10px;
             text-align: center;
             white-space: nowrap;
-            user-select: none;
-            touch-action: none;
-            flex-shrink: 0; /* Prevent shrinking */
-            position: relative; /* Default positioning */
+            transition: transform 0.3s ease, background-color 0.2s ease;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 1;
         }
         .tile.long-text {
-            font-size: 20px;
-            width: auto;
+            font-size: 15px; /* Reduced from 20px to 15px */
         }
-        .tile.dragging {
-            background-color: #aaa;
-            opacity: 0.6;
-            cursor: grabbing;
+        .tile:hover {
+            background-color: #add8e6;
+            transform: scale(1.05);
+        }
+        .tile.moving {
+            position: absolute;
+            z-index: 10;
+            transition: all 1s ease;
+            visibility: visible !important;
+        }
+        .tile.hidden {
+            visibility: hidden;
+        }
+        .tile.disabled {
+            pointer-events: none;
+            opacity: 0.7;
         }
         #message {
             margin-top: 20px;
@@ -61,13 +99,47 @@
         #audioPlayer {
             display: none;
         }
+        @media (max-width: 600px) {
+            .game-container {
+                width: 100%;
+            }
+            .line-container {
+                grid-template-columns: 100px 1fr; /* Adjusted for smaller screens */
+            }
+            .text {
+                width: 80px; /* Adjusted for smaller screens */
+            }
+            .description {
+                font-size: 30px;
+            }
+            .tile {
+                font-size: 20px; /* Slightly smaller for mobile */
+                padding: 8px;
+            }
+            .tile.long-text {
+                font-size: 12px; /* Slightly smaller for mobile */
+            }
+        }
     </style>
 </head>
 <body>
     <h1>Seb's Sayings</h1>
     <h2 id="subtitle">Move the words to make a well-known saying</h2>
     <button id="startButton">Start</button>
-    <div class="container" id="container" style="display: none;"></div>
+    <div class="game-container" id="game-container" style="display: none;">
+        <div class="line-container">
+            <div class="description">
+                <span class="text">mixed</span><span class="colon">:</span>
+            </div>
+            <div class="tile-line" id="mixed-line"></div>
+        </div>
+        <div class="line-container">
+            <div class="description">
+                <span class="text">unmixed</span><span class="colon">:</span>
+            </div>
+            <div class="tile-line" id="unmixed-line"></div>
+        </div>
+    </div>
     <button id="clueButton" style="display: none;">Clue</button>
     <div id="message"></div>
     <audio id="audioPlayer" controls></audio>
@@ -84,18 +156,23 @@
             'Two heads are better than one', 'When in Rome do as the Romans do',
             'Where theres a will theres a way', 'You cant judge a book by its cover'
         ];
-        const container = document.getElementById('container');
+        const gameContainer = document.getElementById('game-container');
+        const mixedLine = document.getElementById('mixed-line');
+        const unmixedLine = document.getElementById('unmixed-line');
         const message = document.getElementById('message');
         const audioPlayer = document.getElementById('audioPlayer');
         const startButton = document.getElementById('startButton');
         const clueButton = document.getElementById('clueButton');
         const subtitle = document.getElementById('subtitle');
         let currentSaying = "";
+        let isAnimating = false;
+        const tilePositions = new Map();
+        let tileCounter = 0;
 
         startButton.addEventListener('click', () => {
             startButton.style.display = 'none';
             subtitle.style.display = 'none';
-            container.style.display = 'flex';
+            gameContainer.style.display = 'block';
             clueButton.style.display = 'block';
             startNewGame();
         });
@@ -112,6 +189,135 @@
             return sayingsList[randomIndex];
         };
 
+        const createTile = (word, handler) => {
+            const tile = document.createElement('div');
+            tile.classList.add('tile');
+            tile.textContent = word;
+            tile.dataset.word = word;
+            tile.dataset.id = `tile-${tileCounter++}`;
+            if (word.length > 10) tile.classList.add('long-text');
+            addTileListeners(tile, handler);
+            return tile;
+        };
+
+        const addTileListeners = (tile, handler) => {
+            tile.addEventListener('click', handleEvent(handler));
+            tile.addEventListener('touchstart', handleEvent(handler));
+        };
+
+        const removeTileListeners = (tile, handler) => {
+            tile.removeEventListener('click', handler);
+            tile.removeEventListener('touchstart', handler);
+        };
+
+        const handleEvent = (handler) => (e) => {
+            e.preventDefault();
+            if (isAnimating) return;
+            isAnimating = true;
+            handler(e);
+        };
+
+        const moveToUnmixed = (event) => {
+            const originalTile = event.currentTarget;
+            const word = originalTile.dataset.word;
+            const tileId = originalTile.dataset.id;
+
+            originalTile.classList.add('disabled');
+            removeTileListeners(originalTile, moveToUnmixed);
+
+            const animatedTile = originalTile.cloneNode(true);
+            animatedTile.classList.add('moving');
+            gameContainer.appendChild(animatedTile);
+
+            const originalPos = tilePositions.get(tileId);
+            animatedTile.style.left = `${originalPos.x}px`;
+            animatedTile.style.top = `${originalPos.y}px`;
+            animatedTile.style.visibility = 'visible';
+
+            originalTile.classList.add('hidden');
+
+            const targetRect = unmixedLine.getBoundingClientRect();
+            const containerRect = gameContainer.getBoundingClientRect();
+            let offsetX = targetRect.left - containerRect.left;
+            for (let tile of unmixedLine.children) {
+                offsetX += tile.getBoundingClientRect().width + 20;
+            }
+            const offsetY = targetRect.top - containerRect.top;
+
+            requestAnimationFrame(() => {
+                animatedTile.style.transform = `translate(${offsetX - originalPos.x}px, ${offsetY - originalPos.y}px)`;
+            });
+
+            setTimeout(() => {
+                const newTile = createTile(word, moveBackToMixed);
+                newTile.dataset.originalId = tileId;
+                unmixedLine.appendChild(newTile);
+                animatedTile.remove();
+                originalTile.classList.remove('disabled');
+                isAnimating = false;
+                checkOrder();
+            }, 1000);
+        };
+
+        const moveBackToMixed = (event) => {
+            const targetTile = event.currentTarget;
+            const word = targetTile.dataset.word;
+            const originalTileId = targetTile.dataset.originalId;
+            const originalTile = mixedLine.querySelector(`.tile[data-id="${originalTileId}"]`);
+
+            targetTile.classList.add('disabled');
+            removeTileListeners(targetTile, moveBackToMixed);
+
+            targetTile.classList.add('hidden');
+
+            const animatedTile = targetTile.cloneNode(true);
+            animatedTile.classList.remove('hidden');
+            animatedTile.classList.add('moving');
+            gameContainer.appendChild(animatedTile);
+
+            const targetRect = targetTile.getBoundingClientRect();
+            const containerRect = gameContainer.getBoundingClientRect();
+            const startX = targetRect.left - containerRect.left;
+            const startY = targetRect.top - containerRect.top;
+
+            animatedTile.style.left = `${startX}px`;
+            animatedTile.style.top = `${startY}px`;
+            animatedTile.style.visibility = 'visible';
+
+            const originalPos = tilePositions.get(originalTileId);
+
+            requestAnimationFrame(() => {
+                animatedTile.style.transform = `translate(${originalPos.x - startX}px, ${originalPos.y - startY}px)`;
+            });
+
+            setTimeout(() => {
+                originalTile.classList.remove('hidden');
+                targetTile.remove();
+                animatedTile.remove();
+                originalTile.classList.remove('disabled');
+                addTileListeners(originalTile, moveToUnmixed);
+                isAnimating = false;
+                checkOrder();
+            }, 1000);
+        };
+
+        const checkOrder = () => {
+            const currentOrder = Array.from(unmixedLine.children).map(tile => tile.textContent).join(" ");
+            if (currentOrder === currentSaying) {
+                message.textContent = "";
+                audioPlayer.src = "sayings/well done.mp3";
+                audioPlayer.play();
+                audioPlayer.onended = () => {
+                    audioPlayer.src = "sayings/" + currentSaying + ".mp3";
+                    audioPlayer.play();
+                    audioPlayer.onended = null;
+                    setTimeout(() => {
+                        startNewGame();
+                    }, 5000);
+                };
+            }
+        };
+
         const initializeGame = (saying) => {
             currentSaying = saying;
             const words = saying.split(" ");
@@ -121,127 +327,24 @@
                 shuffle(shuffledWords);
             } while (shuffledWords.join(" ") === saying);
 
-            container.innerHTML = '';
-            shuffledWords.forEach((word, index) => {
-                const tile = document.createElement('div');
-                tile.className = 'tile';
-                tile.textContent = word;
-                tile.draggable = true;
-                tile.id = 'tile' + index;
-                if (word.length > 10) {
-                    tile.classList.add('long-text');
-                }
-                container.appendChild(tile);
+            mixedLine.innerHTML = '';
+            unmixedLine.innerHTML = '';
+            tilePositions.clear();
+            tileCounter = 0;
+
+            shuffledWords.forEach((word) => {
+                const tile = createTile(word, moveToUnmixed);
+                mixedLine.appendChild(tile);
             });
 
-            const tiles = document.querySelectorAll('.tile');
-            let draggedTile = null;
-            let initialX = 0;
-            let currentX = 0;
-
-            tiles.forEach(tile => {
-                // Mouse drag events
-                tile.addEventListener('dragstart', (e) => {
-                    draggedTile = tile;
-                    tile.classList.add('dragging');
-                });
-
-                tile.addEventListener('dragend', () => {
-                    draggedTile.classList.remove('dragging');
-                    draggedTile.style.removeProperty('position');
-                    draggedTile.style.removeProperty('left');
-                    draggedTile = null;
-                    checkOrder(saying);
-                });
-
-                // Touch events
-                tile.addEventListener('touchstart', (e) => {
-                    draggedTile = tile;
-                    initialX = e.touches[0].pageX;
-                    tile.classList.add('dragging');
-                    tile.style.zIndex = 1000;
-                    e.preventDefault();
-                });
-
-                tile.addEventListener('touchmove', (e) => {
-                    if (draggedTile) {
-                        currentX = e.touches[0].pageX;
-                        const deltaX = currentX - initialX;
-                        draggedTile.style.position = 'relative';
-                        draggedTile.style.left = `${deltaX}px`;
-
-                        const afterElement = getTouchAfterElement(tiles, currentX);
-                        const previousSibling = draggedTile.previousSibling;
-                        const nextSibling = draggedTile.nextSibling;
-
-                        if (afterElement === null) {
-                            container.appendChild(draggedTile);
-                        } else {
-                            container.insertBefore(draggedTile, afterElement);
-                        }
-
-                        // Reset initialX if tile moved to a new position
-                        if (draggedTile.previousSibling !== previousSibling || draggedTile.nextSibling !== nextSibling) {
-                            const rect = draggedTile.getBoundingClientRect();
-                            initialX = currentX - (rect.left - container.getBoundingClientRect().left);
-                            draggedTile.style.left = '0px'; // Reset to new position
-                        }
-                    }
-                    e.preventDefault();
-                });
-
-                tile.addEventListener('touchend', (e) => {
-                    if (draggedTile) {
-                        draggedTile.classList.remove('dragging');
-                        draggedTile.style.zIndex = '';
-                        draggedTile.style.position = ''; // Clear immediately
-                        draggedTile.style.left = ''; // Clear immediately
-                        draggedTile = null;
-                        // Force repaint
-                        container.style.display = 'none';
-                        container.offsetHeight; // Trigger reflow
-                        container.style.display = 'flex';
-                        checkOrder(saying);
-                    }
+            mixedLine.querySelectorAll('.tile').forEach(tile => {
+                const rect = tile.getBoundingClientRect();
+                const containerRect = gameContainer.getBoundingClientRect();
+                tilePositions.set(tile.dataset.id, {
+                    x: rect.left - containerRect.left,
+                    y: rect.top - containerRect.top
                 });
             });
-
-            // Mouse dragover
-            document.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                const afterElement = getDragAfterElement(tiles, e.clientX);
-                if (afterElement == null) {
-                    container.appendChild(draggedTile);
-                } else {
-                    container.insertBefore(draggedTile, afterElement);
-                }
-            });
-
-            function getDragAfterElement(tiles, x) {
-                const draggableElements = [...tiles].filter(tile => tile !== draggedTile);
-                return draggableElements.reduce((closest, child) => {
-                    const box = child.getBoundingClientRect();
-                    const offset = x - box.left - box.width / 2;
-                    if (offset < 0 && offset > closest.offset) {
-                        return { offset: offset, element: child };
-                    } else {
-                        return closest;
-                    }
-                }, { offset: Number.NEGATIVE_INFINITY }).element;
-            }
-
-            function getTouchAfterElement(tiles, x) {
-                const draggableElements = [...tiles].filter(tile => tile !== draggedTile);
-                return draggableElements.reduce((closest, child) => {
-                    const box = child.getBoundingClientRect();
-                    const offset = x - box.left - box.width / 2;
-                    if (offset < 0 && offset > closest.offset) {
-                        return { offset: offset, element: child };
-                    } else {
-                        return closest;
-                    }
-                }, { offset: Number.NEGATIVE_INFINITY }).element;
-            }
         };
 
         const startNewGame = () => {
@@ -255,23 +358,6 @@
                 [array[i], array[j]] = [array[j], array[i]];
             }
         };
-
-        function checkOrder(saying) {
-            const currentOrder = Array.from(container.children).map(tile => tile.textContent).join(" ");
-            if (currentOrder === saying) {
-                message.textContent = "";
-                audioPlayer.src = "sayings/well done.mp3";
-                audioPlayer.play();
-                audioPlayer.onended = () => {
-                    audioPlayer.src = "sayings/" + saying + ".mp3";
-                    audioPlayer.play();
-                    audioPlayer.onended = null;
-                    setTimeout(() => {
-                        startNewGame();
-                    }, 5000);
-                };
-            }
-        }
     </script>
 </body>
 </html>
