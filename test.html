@@ -1,229 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="windows-1252">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Interactive Tile Grid with Animation</title>
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-            font-family: 'Arial', sans-serif;
-            -webkit-user-select: none;
-            user-select: none;
-            touch-action: manipulation;
-        }
-
-        .container {
-            margin: 50px;
-            position: relative;
-        }
-
-        .tile-line {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            min-height: 120px;
-            padding: 10px;
-            position: relative;
-        }
-
-        #target-line {
-            margin-top: 100px;
-        }
-
-        .tile {
-            width: 100px;
-            height: 100px;
-            background-color: #ddd;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 2em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.3s ease, background-color 0.2s ease;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            position: relative;
-            z-index: 1;
-        }
-
-        .tile:hover {
-            background-color: #ccc;
-            transform: scale(1.05);
-        }
-
-        .tile.moving {
-            position: absolute;
-            z-index: 10;
-            transition: all 1s ease;
-            visibility: visible !important; /* Ensure it’s visible during animation */
-        }
-
-        .tile.hidden {
-            visibility: hidden;
-        }
-
-        .tile.disabled {
-            pointer-events: none;
-            opacity: 0.7;
-        }
-
-        @media (max-width: 600px) {
-            .tile {
-                width: 80px;
-                height: 80px;
-                font-size: 1.5em;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="tile-line" id="original-line">
-            <div class="tile" data-letter="A">A</div>
-            <div class="tile" data-letter="B">B</div>
-            <div class="tile" data-letter="C">C</div>
-            <div class="tile" data-letter="D">D</div>
-            <div class="tile" data-letter="E">E</div>
-        </div>
-        <div class="tile-line" id="target-line"></div>
-    </div>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Playback Test</title>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const originalLine = document.getElementById('original-line');
-            const targetLine = document.getElementById('target-line');
-            const container = document.querySelector('.container');
-            let isAnimating = false;
-            const tilePositions = new Map();
+        document.addEventListener("DOMContentLoaded", function() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const buffers = [];
 
-            // Store initial positions relative to container
-            originalLine.querySelectorAll('.tile').forEach(tile => {
-                const rect = tile.getBoundingClientRect();
-                const containerRect = container.getBoundingClientRect();
-                tilePositions.set(tile.dataset.letter, {
-                    x: rect.left - containerRect.left,
-                    y: rect.top - containerRect.top
-                });
+            // Function to play a list of mp3 files directly
+            function playDirect() {
+                const files = ['numberFiles/1.mp3', 'numberFiles/plus.mp3', 'numberFiles/2.mp3'];
+                let index = 0;
+
+                function playNext() {
+                    if (index < files.length) {
+                        const audio = new Audio(files[index]);
+                        audio.onended = playNext;
+                        audio.play();
+                        index++;
+                    }
+                }
+
+                playNext();
+            }
+
+            // Function to play audio from preloaded buffers
+            function playFromBuffer() {
+                console.log('playFromBuffer called');
+                function playBuffer(index) {
+                    if (index < buffers.length) {
+                        const source = audioContext.createBufferSource();
+                        source.buffer = buffers[index];
+                        source.connect(audioContext.destination);
+                        source.onended = function() {
+                            playBuffer(index + 1);
+                        };
+                        source.start(0);
+                    }
+                }
+
+                playBuffer(0);
+            }
+
+            // Preload audio buffers
+            const files = ['numberFiles/1.mp3', 'numberFiles/plus.mp3', 'numberFiles/2.mp3'];
+            let loadCount = 0;
+
+            files.forEach(function(url, index) {
+                fetch(url)
+                    .then(response => response.arrayBuffer())
+                    .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+                    .then(audioBuffer => {
+                        buffers[index] = audioBuffer;
+                        loadCount++;
+                        console.log(`Loaded ${url}`);
+                        if (loadCount === files.length) {
+                            console.log('All buffers loaded');
+                            document.getElementById('playBuffer').disabled = false;
+                        }
+                    });
             });
 
-            // Create a new tile element
-            const createTile = (letter) => {
-                const tile = document.createElement('div');
-                tile.classList.add('tile');
-                tile.textContent = letter;
-                tile.dataset.letter = letter;
-                addTileListeners(tile, moveBackToOriginal);
-                return tile;
-            };
-
-            // Add event listeners
-            const addTileListeners = (tile, handler) => {
-                tile.addEventListener('click', handleEvent(handler));
-                tile.addEventListener('touchstart', handleEvent(handler));
-            };
-
-            // Remove event listeners
-            const removeTileListeners = (tile, handler) => {
-                tile.removeEventListener('click', handler);
-                tile.removeEventListener('touchstart', handler);
-            };
-
-            // Unified event handler to prevent duplicates
-            const handleEvent = (handler) => (e) => {
-                e.preventDefault();
-                if (isAnimating) return;
-                isAnimating = true;
-                handler(e);
-            };
-
-            // Move tile from original to target with animation
-            const moveToTarget = (event) => {
-                const originalTile = event.currentTarget;
-                const letter = originalTile.dataset.letter;
-
-                originalTile.classList.add('disabled');
-                removeTileListeners(originalTile, moveToTarget);
-
-                // Clone the tile before hiding the original
-                const animatedTile = originalTile.cloneNode(true);
-                animatedTile.classList.add('moving');
-                container.appendChild(animatedTile);
-
-                const originalPos = tilePositions.get(letter);
-                animatedTile.style.left = `${originalPos.x}px`;
-                animatedTile.style.top = `${originalPos.y}px`;
-                animatedTile.style.visibility = 'visible'; // Ensure it’s visible
-
-                // Hide the original tile *after* cloning
-                originalTile.classList.add('hidden');
-
-                const targetRect = targetLine.getBoundingClientRect();
-                const containerRect = container.getBoundingClientRect();
-                const offsetX = targetRect.left - containerRect.left + targetLine.children.length * 120;
-                const offsetY = targetRect.top - containerRect.top;
-
-                requestAnimationFrame(() => {
-                    animatedTile.style.transform = `translate(${offsetX - originalPos.x}px, ${offsetY - originalPos.y}px)`;
-                });
-
-                setTimeout(() => {
-                    const newTile = createTile(letter);
-                    targetLine.appendChild(newTile);
-                    animatedTile.remove();
-                    originalTile.classList.remove('disabled');
-                    isAnimating = false;
-                }, 1000);
-            };
-
-            // Move tile from target back to original with animation
-            const moveBackToOriginal = (event) => {
-                const targetTile = event.currentTarget;
-                const letter = targetTile.dataset.letter;
-                const originalTile = originalLine.querySelector(`.tile[data-letter="${letter}"]`);
-
-                targetTile.classList.add('disabled');
-                removeTileListeners(targetTile, moveBackToOriginal);
-
-                const animatedTile = targetTile.cloneNode(true);
-                animatedTile.classList.add('moving');
-                container.appendChild(animatedTile);
-
-                const targetRect = targetTile.getBoundingClientRect();
-                const containerRect = container.getBoundingClientRect();
-                const startX = targetRect.left - containerRect.left;
-                const startY = targetRect.top - containerRect.top;
-
-                animatedTile.style.left = `${startX}px`;
-                animatedTile.style.top = `${startY}px`;
-                animatedTile.style.visibility = 'visible'; // Ensure it’s visible
-
-                const originalPos = tilePositions.get(letter);
-
-                requestAnimationFrame(() => {
-                    animatedTile.style.transform = `translate(${originalPos.x - startX}px, ${originalPos.y - startY}px)`;
-                });
-
-                setTimeout(() => {
-                    originalTile.classList.remove('hidden');
-                    targetTile.remove();
-                    animatedTile.remove();
-                    originalTile.classList.remove('disabled');
-                    addTileListeners(originalTile, moveToTarget);
-                    isAnimating = false;
-                }, 1000);
-            };
-
-            // Initialize original tiles
-            originalLine.querySelectorAll('.tile').forEach(tile => {
-                addTileListeners(tile, moveToTarget);
-            });
+            // Assign event listeners to buttons
+            document.getElementById('playDirect').addEventListener('click', playDirect);
+            document.getElementById('playBuffer').addEventListener('click', playFromBuffer);
         });
     </script>
+</head>
+<body>
+    <h1>Sound Playback Test</h1>
+    <button id="playDirect">Play Directly</button>
+    <button id="playBuffer" disabled>Play from Buffer</button>
 </body>
 </html>
