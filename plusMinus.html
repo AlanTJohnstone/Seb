@@ -6,41 +6,54 @@
     <style>
         body {
             text-align: center;
-            background-color: #f0f8ff; /* Light blue background */
-            color: #333333; /* Dark gray text color */
+            background-color: #f0f8ff;
+            color: #333333;
             font-family: Arial, sans-serif;
             font-size: 30px;
         }
 
-        #questionContainer, #timerContainer, #endMessage {
-            display: none; /* Hide by default */
+        #questionContainer, #timerContainer, #endMessage, #congratsScreen {
+            display: none;
         }
 
         #questionContainer {
             margin-top: 20px;
-            font-size: 72px; /* Larger text size for the numbers */
+            font-size: 72px;
         }
 
         input {
-            font-size: 72px; /* Larger input text size */
+            font-size: 72px;
             padding: 10px;
-            width: 160px; /* 4 characters wide */
+            width: 160px;
         }
 
         #timerContainer {
             margin-top: 20px;
-            font-size: 72px; /* Double the size of the other numbers */
-            color: #7393B3; /* grey blue color for the timer */
+            font-size: 72px;
+            color: #7393B3;
         }
 
-        #startButton {
+        button {  /* Added this new rule */
             margin-top: 20px;
             font-size: 36px;
             padding: 10px 20px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         #endMessage {
             font-size: 36px;
+            color: #7393B3;
+        }
+
+        #bestScore {
+            font-size: 60px;
+            margin-top: 40px;
+        }
+
+        #congratsScreen {
+            font-size: 60px;
             color: #7393B3;
         }
     </style>
@@ -49,17 +62,36 @@
         let correctAnswers = 0;
         let wrongAnswers = 0;
 
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                let date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/";
+        }
+
+        function getCookie(name) {
+            let nameEQ = name + "=";
+            let ca = document.cookie.split(';');
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
         function getRandomNumber() {
-            return Math.floor(Math.random() * 11); // Random number between 0 and 10
+            return Math.floor(Math.random() * 11);
         }
 
         function playSound(fileName, callback) {
             var audio = new Audio('numberFiles/'+fileName);
             audio.play();
             audio.addEventListener('ended', function() {
-                if (callback) {
-                    callback();
-                }
+                if (callback) callback();
             });
         }
 
@@ -74,9 +106,7 @@
                 answer = num1 + num2;
                 soundSequence = [num1 + '.mp3', 'plus.mp3', num2 + '.mp3'];
             } else {
-                if (num1 < num2) {
-                    [num1, num2] = [num2, num1]; // Ensure num1 is greater for positive results
-                }
+                if (num1 < num2) [num1, num2] = [num2, num1];
                 questionText = num1 + ' - ' + num2;
                 answer = num1 - num2;
                 soundSequence = [num1 + '.mp3', 'minus.mp3', num2 + '.mp3'];
@@ -93,79 +123,128 @@
                     });
                 }
             }
-
             playSounds(soundSequence);
         }
 
         function checkAnswer() {
-            var answerInput   = document.getElementById('answer');
-            var userAnswer    = parseInt(answerInput.value);
+            var answerInput = document.getElementById('answer');
+            var userAnswer = parseInt(answerInput.value);
             var correctAnswer = parseInt(answerInput.dataset.sum);
 
             if (userAnswer === correctAnswer) {
                 correctAnswers++;
                 playSound('good.mp3', function() {
-                    setTimeout(generateQuestion, 1000); // Ask another question after a short delay
+                    setTimeout(generateQuestion, 1000);
                 });
             } else {
                 wrongAnswers++;
                 playSound('bad.mp3', function() {
-                    answerInput.value = ''; // Clear the input box
+                    answerInput.value = '';
                 });
             }
         }
 
-        function startTimer(duration, display) {
-            var timer = duration, seconds;
+        function startTimer(display) {
+            var timer = 60;
             timerInterval = setInterval(function () {
-                seconds = parseInt(timer % 60, 10);
+                var seconds = parseInt(timer % 60, 10);
                 seconds = seconds < 10 ? "0" + seconds : seconds;
                 display.textContent = "Remaining Time: " + seconds + " Seconds";
 
                 if (--timer < 0) {
                     clearInterval(timerInterval);
-                    document.getElementById('endMessage').style.display = 'block';
-                    document.getElementById('answer').disabled = true; // Disable input
-                    document.getElementById('endMessage').innerText = `Time's up! Correct Answers: ${correctAnswers}, Wrong Answers: ${wrongAnswers}`;
+                    document.getElementById('answer').disabled = true;
+                    let bestScore = parseInt(getCookie('bestScore') || '0');
+                    if (correctAnswers > bestScore) {
+                        setCookie('bestScore', correctAnswers, 365);
+                        showCongratsScreen(correctAnswers);
+                    } else {
+                        document.getElementById('endMessage').style.display = 'block';
+                        document.getElementById('endMessage').innerText = 
+                            `Time's up! Correct Answers: ${correctAnswers}, Wrong Answers: ${wrongAnswers}`;
+                        document.getElementById('startButton').style.display = 'block';
+                        document.getElementById('bestScore').style.display = 'block';
+                        document.getElementById('questionContainer').style.display = 'none';
+                        document.getElementById('timerContainer').style.display = 'none';
+                    }
                 }
             }, 1000);
         }
 
+        function showCongratsScreen(newScore) {
+            document.getElementById('questionContainer').style.display = 'none';
+            document.getElementById('timerContainer').style.display = 'none';
+            document.getElementById('congratsScreen').style.display = 'block';
+            playSound('congratulations.mp3', function() {
+                document.getElementById('congratsMessage').innerText = 
+                `Congratulations, your best score is now ${newScore}!`;
+            })
+            
+        }
+
+        function resetGame() {
+            document.getElementById('congratsScreen').style.display = 'none';
+            document.getElementById('endMessage').style.display = 'none';
+            document.getElementById('questionContainer').style.display = 'block';
+            document.getElementById('timerContainer').style.display = 'block';
+            document.getElementById('answer').disabled = false;
+            correctAnswers = 0;
+            wrongAnswers = 0;
+            updateBestScoreDisplay();
+            startTimer(document.getElementById('timer'));
+            generateQuestion();
+        }
+
+        function updateBestScoreDisplay() {
+            let bestScore = getCookie('bestScore') || '0';
+            document.getElementById('bestScore').innerText = 
+                `Your Highest Score: ${bestScore}`;
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
-            var oneMinute = 60,
-                display = document.getElementById('timer');
+            var display = document.getElementById('timer');
+            updateBestScoreDisplay();
 
             document.getElementById('startButton').addEventListener('click', function () {
+                document.getElementById('startButton').style.display = 'none';
+                document.getElementById('bestScore').style.display = 'none';
                 document.getElementById('endMessage').style.display = 'none';
-                document.getElementById('answer').disabled = false; // Enable input
+                document.getElementById('answer').disabled = false;
                 document.getElementById('questionContainer').style.display = 'block';
                 document.getElementById('timerContainer').style.display = 'block';
                 correctAnswers = 0;
                 wrongAnswers = 0;
-                startTimer(oneMinute, display);
+                startTimer(display);
                 generateQuestion();
             });
 
             document.getElementById('answer').addEventListener('keydown', function(event) {
                 if (event.key === 'Enter' || event.key === 'Return') {
-                    event.preventDefault(); // Prevent the default action of the Enter key
+                    event.preventDefault();
                     checkAnswer();
                 }
             });
+
+            document.getElementById('playAgainButton').addEventListener('click', resetGame);
         });
     </script>
 </head>
 <body>
     <h1>Seb's Sums</h1>
     <button id="startButton">Start</button>
+    <div id="bestScore"></div>
     <div id="questionContainer">
         <span id="question"></span>
-        <span>=</span> <!-- Only one '=' sign now -->
+        <span>=</span>
         <input type="number" id="answer" />
     </div>
     <div id="timerContainer">
         <div id="timer">Remaining Time: 60 Seconds</div>
     </div>
     <div id="endMessage">Time's up! Good job!</div>
+    <div id="congratsScreen">
+        <div id="congratsMessage"></div>
+        <button id="playAgainButton">Play again?</button>
+    </div>
 </body>
 </html>
