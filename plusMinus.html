@@ -12,7 +12,7 @@
             font-size: 30px;
         }
 
-        #questionContainer, #timerContainer, #endMessage, #congratsScreen {
+        #questionContainer, #timerContainer, #endMessage, #congratsScreen, #playAgainButton {
             display: none;
         }
 
@@ -175,9 +175,10 @@
             document.getElementById('questionContainer').style.display = 'none';
             document.getElementById('timerContainer').style.display = 'none';
             document.getElementById('congratsScreen').style.display = 'block';
-            playSound('congratulations.mp3', function() {
-                document.getElementById('congratsMessage').innerText = 
+            document.getElementById('congratsMessage').innerText = 
                 `Congratulations, your best score is now ${newScore}!`;
+            playSound('congratulations.mp3', function() {
+                document.getElementById('playAgainButton').style.display = 'block';
             })
             
         }
@@ -188,6 +189,7 @@
             document.getElementById('questionContainer').style.display = 'block';
             document.getElementById('timerContainer').style.display = 'block';
             document.getElementById('answer').disabled = false;
+	    document.getElementById('playAgainButton').style.display = 'none';
             correctAnswers = 0;
             wrongAnswers = 0;
             updateBestScoreDisplay();
@@ -247,4 +249,3 @@
         <button id="playAgainButton">Play again?</button>
     </div>
 </body>
-</html>
