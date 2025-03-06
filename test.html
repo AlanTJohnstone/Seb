@@ -1,77 +1,377 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sound Playback Test</title>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const buffers = [];
-
-            // Function to play a list of mp3 files directly
-            function playDirect() {
-                const files = ['numberFiles/1.mp3', 'numberFiles/plus.mp3', 'numberFiles/2.mp3'];
-                let index = 0;
-
-                function playNext() {
-                    if (index < files.length) {
-                        const audio = new Audio(files[index]);
-                        audio.onended = playNext;
-                        audio.play();
-                        index++;
-                    }
-                }
-
-                playNext();
-            }
-
-            // Function to play audio from preloaded buffers
-            function playFromBuffer() {
-                console.log('playFromBuffer called');
-                function playBuffer(index) {
-                    if (index < buffers.length) {
-                        const source = audioContext.createBufferSource();
-                        source.buffer = buffers[index];
-                        source.connect(audioContext.destination);
-                        source.onended = function() {
-                            playBuffer(index + 1);
-                        };
-                        source.start(0);
-                    }
-                }
-
-                playBuffer(0);
-            }
-
-            // Preload audio buffers
-            const files = ['numberFiles/1.mp3', 'numberFiles/plus.mp3', 'numberFiles/2.mp3'];
-            let loadCount = 0;
-
-            files.forEach(function(url, index) {
-                fetch(url)
-                    .then(response => response.arrayBuffer())
-                    .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
-                    .then(audioBuffer => {
-                        buffers[index] = audioBuffer;
-                        loadCount++;
-                        console.log(`Loaded ${url}`);
-                        if (loadCount === files.length) {
-                            console.log('All buffers loaded');
-                            document.getElementById('playBuffer').disabled = false;
-                        }
-                    });
-            });
-
-            // Assign event listeners to buttons
-            document.getElementById('playDirect').addEventListener('click', playDirect);
-            document.getElementById('playBuffer').addEventListener('click', playFromBuffer);
-        });
-    </script>
+    <title>Connect4</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #64C864; /* Green background */
+        }
+        #game-container {
+            position: relative;
+            background: #64C864; /* Changed to green to match body */
+        }
+        #backboard {
+            background: #969696; /* Grey for backboard only */
+            position: relative;
+            overflow: hidden;
+        }
+        #drop-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        #board {
+            background: #0000FF;
+            position: absolute;
+            top: 0;
+            z-index: 2;
+            mask: url(#hole-mask);
+        }
+        .piece {
+            border-radius: 50%;
+            position: absolute;
+            pointer-events: none;
+        }
+        #message {
+            color: #0000FF;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        .button {
+            background: #64C864;
+            color: #0000FF;
+            padding: 20px;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+            border: none;
+            margin: 5px;
+            font-size: 32px;
+        }
+        .button:hover {
+            background: #FFFFFF;
+        }
+        #control-container {
+            position: absolute;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            padding: 10px 0;
+            background: #64C864; /* Green background */
+        }
+        #hover-piece {
+            z-index: 100;
+            position: absolute;
+        }
+    </style>
 </head>
 <body>
-    <h1>Sound Playback Test</h1>
-    <button id="playDirect">Play Directly</button>
-    <button id="playBuffer" disabled>Play from Buffer</button>
+    <div id="game-container"></div>
+    <script>
+        const Constants = {
+            STARTING: 0,
+            DROPPING: 1,
+            PLAYING: 2,
+            FINISHED: 4
+        };
+
+        let status = Constants.STARTING;
+        let humanPlayer = null;
+        let player = 1;
+        let state = Array(6).fill().map(() => Array(7).fill(0));
+        let dropping = false;
+        let dropCol, dropX, dropY, finalY;
+        let pieceElement;
+        let aiMoveScheduled = false;
+
+        // DOM elements
+        const container = document.getElementById('game-container');
+        const backboard = document.createElement('div');
+        backboard.id = 'backboard';
+        container.appendChild(backboard);
+
+        const dropLayer = document.createElement('div');
+        dropLayer.id = 'drop-layer';
+        backboard.appendChild(dropLayer);
+
+        const board = document.createElement('div');
+        board.id = 'board';
+        backboard.appendChild(board);
+
+        const controlContainer = document.createElement('div');
+        controlContainer.id = 'control-container';
+        container.appendChild(controlContainer);
+
+        const message = document.createElement('div');
+        message.id = 'message';
+        controlContainer.appendChild(message);
+
+        // Responsive size updates
+        function updateSizes() {
+            const smallestSide = Math.min(window.innerWidth, window.innerHeight);
+            window.boxSize = Math.floor(smallestSide * 0.75 / 7); // Made global for use elsewhere
+            window.circleRatio = 0.8;
+            window.circleRadius = boxSize * circleRatio / 2;
+            const boardWidth = boxSize * 7;
+            const boardHeight = boxSize * 6;
+            const greenBoxHeight = boxSize;
+            const backBoardHeight = boardHeight + greenBoxHeight;
+
+            container.style.width = `${boardWidth}px`;
+            container.style.height = `${backBoardHeight + 100}px`; // Buffer for control container
+            backboard.style.width = `${boardWidth}px`;
+            backboard.style.height = `${backBoardHeight}px`;
+            board.style.width = `${boardWidth}px`;
+            board.style.height = `${boardHeight}px`;
+            board.style.top = `${greenBoxHeight}px`;
+            controlContainer.style.top = `${backBoardHeight}px`;
+            message.style.fontSize = `${Math.floor(100 * (smallestSide / 1920))}px`;
+
+            // Recreate SVG mask
+            const existingSvg = document.querySelector('svg');
+            if (existingSvg) existingSvg.remove();
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', '0');
+            svg.setAttribute('height', '0');
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const mask = document.createElementNS('http://www.w3.org/2000/svg', 'mask');
+            mask.setAttribute('id', 'hole-mask');
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('x', '0');
+            rect.setAttribute('y', '0');
+            rect.setAttribute('width', boardWidth);
+            rect.setAttribute('height', boardHeight);
+            rect.setAttribute('fill', 'white');
+            mask.appendChild(rect);
+            for (let i = 0; i < 7; i++) {
+                for (let j = 0; j < 6; j++) {
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    const cx = i * boxSize + boxSize / 2;
+                    const cy = j * boxSize + boxSize / 2;
+                    circle.setAttribute('cx', cx);
+                    circle.setAttribute('cy', cy);
+                    circle.setAttribute('r', circleRadius);
+                    circle.setAttribute('fill', 'black');
+                    mask.appendChild(circle);
+                }
+            }
+            defs.appendChild(mask);
+            svg.appendChild(defs);
+            container.appendChild(svg);
+
+            drawBoard(); // Redraw pieces with new sizes
+        }
+
+        // Initial call and resize listener
+        updateSizes();
+        window.addEventListener('resize', updateSizes);
+
+        // Game logic functions
+        function getColumn(x) {
+            const moves = getValidMoves();
+            const col = Math.floor(x / boxSize);
+            return moves[col] ? col : null;
+        }
+
+        function getValidMoves() {
+            return state[0].map((_, col) => state.every(row => row[col] !== 0) ? 0 : 1);
+        }
+
+        function drawBoard() {
+            document.querySelectorAll('.piece:not(#dropping-piece):not(#hover-piece)').forEach(p => p.remove());
+            for (let row = 0; row < 6; row++) {
+                for (let col = 0; col < 7; col++) {
+                    if (state[row][col] !== 0) {
+                        const piece = document.createElement('div');
+                        piece.className = 'piece';
+                        piece.style.width = `${circleRadius * 2}px`;
+                        piece.style.height = `${circleRadius * 2}px`;
+                        piece.style.left = `${col * boxSize + (boxSize - circleRadius * 2) / 2}px`;
+                        piece.style.top = `${(5 - row) * boxSize + boxSize + (boxSize - circleRadius * 2) / 2}px`;
+                        piece.style.background = state[row][col] === 1 ? '#FFFF00' : '#FF0000';
+                        backboard.appendChild(piece);
+                    }
+                }
+            }
+        }
+
+        function checkWin() {
+            for (let i = 0; i < 6; i++) {
+                for (let j = 0; j < 7; j++) {
+                    if (j + 3 <= 6 && Math.abs(state[i].slice(j, j + 4).reduce((a, b) => a + b, 0)) === 4) return true;
+                    if (i + 3 <= 5 && Math.abs([0, 1, 2, 3].reduce((a, b) => a + state[i + b][j], 0)) === 4) return true;
+                    if (i + 3 <= 5 && j + 3 <= 6 && Math.abs([0, 1, 2, 3].reduce((a, b) => a + state[i + b][j + b], 0)) === 4) return true;
+                    if (i + 3 <= 5 && j - 3 >= 0 && Math.abs([0, 1, 2, 3].reduce((a, b) => a + state[i + b][j - b], 0)) === 4) return true;
+                }
+            }
+            return false;
+        }
+
+        function isBoardFull() {
+            return state.every(row => row.every(cell => cell !== 0));
+        }
+
+        function doStarting() {
+            message.textContent = "Do you want to start?";
+            const existingYes = document.getElementById('yes-btn');
+            if (!existingYes) {
+                const yesBtn = document.createElement('button');
+                yesBtn.id = 'yes-btn';
+                yesBtn.className = 'button';
+                yesBtn.textContent = 'Yes';
+                yesBtn.onclick = () => {
+                    humanPlayer = 1;
+                    status = Constants.PLAYING;
+                    controlContainer.removeChild(yesBtn);
+                    controlContainer.removeChild(document.getElementById('no-btn'));
+                    message.textContent = '';
+                };
+                controlContainer.appendChild(yesBtn);
+
+                const noBtn = document.createElement('button');
+                noBtn.id = 'no-btn';
+                noBtn.className = 'button';
+                noBtn.textContent = 'No';
+                noBtn.onclick = () => {
+                    humanPlayer = -1;
+                    status = Constants.PLAYING;
+                    controlContainer.removeChild(yesBtn);
+                    controlContainer.removeChild(noBtn);
+                    message.textContent = '';
+                };
+                controlContainer.appendChild(noBtn);
+            }
+            state = Array(6).fill().map(() => Array(7).fill(0));
+            drawBoard();
+        }
+
+        function doDropping() {
+            if (!dropping) {
+                dropping = true;
+                dropX = dropCol * boxSize + (boxSize - circleRadius * 2) / 2;
+                dropY = boxSize / 2 - circleRadius;
+                const row = state.findIndex(r => r[dropCol] === 0);
+                finalY = (5 - row) * boxSize + boxSize + (boxSize - circleRadius * 2) / 2;
+                pieceElement = document.createElement('div');
+                pieceElement.id = 'dropping-piece';
+                pieceElement.className = 'piece';
+                pieceElement.style.width = `${circleRadius * 2}px`;
+                pieceElement.style.height = `${circleRadius * 2}px`;
+                pieceElement.style.left = `${dropX}px`;
+                pieceElement.style.top = `${dropY}px`;
+                pieceElement.style.background = player === 1 ? '#FFFF00' : '#FF0000';
+                pieceElement.style.boxShadow = '0 0 10px #000';
+                dropLayer.appendChild(pieceElement);
+            }
+
+            dropY += (finalY - dropY) * 0.05;
+            pieceElement.style.top = `${dropY}px`;
+
+            if (Math.abs(dropY - finalY) < 1) {
+                dropping = false;
+                const row = state.findIndex(r => r[dropCol] === 0);
+                if (row !== -1) state[row][dropCol] = player;
+                dropLayer.removeChild(pieceElement);
+                drawBoard();
+
+                if (checkWin()) {
+                    status = Constants.FINISHED;
+                    message.textContent = player === humanPlayer ? "You win, click to start again" : "I win, click to start again";
+                } else if (isBoardFull()) {
+                    status = Constants.FINISHED;
+                    message.textContent = "It's a draw, click to start again";
+                } else {
+                    status = Constants.PLAYING;
+                    player = -player;
+                    aiMoveScheduled = false;
+                }
+            }
+        }
+
+        function doPlaying() {
+            if (status !== Constants.PLAYING) return;
+
+            if (player === humanPlayer) {
+                message.textContent = "It's your turn";
+                let piece = document.getElementById('hover-piece');
+                if (!piece) {
+                    piece = document.createElement('div');
+                    piece.id = 'hover-piece';
+                    piece.className = 'piece';
+                    piece.style.width = `${circleRadius * 2}px`;
+                    piece.style.height = `${circleRadius * 2}px`;
+                    piece.style.background = player === 1 ? '#FFFF00' : '#FF0000';
+                    piece.style.boxShadow = '0 0 10px #000';
+                    backboard.appendChild(piece);
+                }
+
+                container.onmousemove = (e) => {
+                    const rect = container.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    piece.style.left = `${Math.max(circleRadius, Math.min(x, boxSize * 7 - circleRadius)) - circleRadius}px`;
+                    piece.style.top = `${boxSize / 2 - circleRadius}px`;
+                };
+
+                container.onclick = (e) => {
+                    const rect = container.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const col = getColumn(x);
+                    if (col !== null) {
+                        dropCol = col;
+                        status = Constants.DROPPING;
+                        const hoverPiece = document.getElementById('hover-piece');
+                        if (hoverPiece) backboard.removeChild(hoverPiece);
+                        container.onmousemove = null;
+                        container.onclick = null;
+                    }
+                };
+            } else {
+                if (!aiMoveScheduled) {
+                    message.textContent = "I am thinking!";
+                    aiMoveScheduled = true;
+                    setTimeout(() => {
+                        if (status !== Constants.PLAYING) return;
+                        const moves = getValidMoves();
+                        const validCols = moves.map((m, i) => m ? i : -1).filter(i => i !== -1);
+                        dropCol = validCols[Math.floor(Math.random() * validCols.length)];
+                        status = Constants.DROPPING;
+                    }, 500);
+                }
+            }
+            drawBoard();
+        }
+
+        function doFinished() {
+            container.onclick = () => {
+                status = Constants.STARTING;
+                humanPlayer = null;
+                player = 1;
+                state = Array(6).fill().map(() => Array(7).fill(0));
+                container.onclick = null;
+                aiMoveScheduled = false;
+            };
+        }
+
+        function gameLoop() {
+            switch (status) {
+                case Constants.STARTING: doStarting(); break;
+                case Constants.DROPPING: doDropping(); break;
+                case Constants.PLAYING: doPlaying(); break;
+                case Constants.FINISHED: doFinished(); break;
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
 </body>
 </html>
