@@ -75,6 +75,12 @@
             position: absolute;
             pointer-events: auto; /* Allow touch interaction */
         }
+        /* Ensure SVG is positioned and sized */
+        svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
     </style>
 </head>
 <body>
@@ -139,12 +145,12 @@
             controlContainer.style.top = `${backBoardHeight}px`;
             message.style.fontSize = `${Math.floor(100 * (smallestSide / 1920))}px`;
 
-            // Recreate SVG mask
+            // Recreate SVG mask with proper size
             const existingSvg = document.querySelector('svg');
             if (existingSvg) existingSvg.remove();
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.setAttribute('width', '0');
-            svg.setAttribute('height', '0');
+            svg.setAttribute('width', boardWidth);  // Set non-zero width
+            svg.setAttribute('height', boardHeight); // Set non-zero height
             const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
             const mask = document.createElementNS('http://www.w3.org/2000/svg', 'mask');
             mask.setAttribute('id', 'hole-mask');
@@ -177,7 +183,7 @@
         updateSizes();
         window.addEventListener('resize', updateSizes);
 
-        // Game logic functions
+        // Game logic functions (unchanged)
         function getColumn(x) {
             const moves = getValidMoves();
             const col = Math.floor(x / boxSize);
