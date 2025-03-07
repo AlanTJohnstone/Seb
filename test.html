@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Connect4a</title>
+    <title>Connect4b</title>
     <style>
         body {
             margin: 0;
@@ -34,8 +34,14 @@
             position: absolute;
             top: 0;
             z-index: 2;
-            -webkit-mask: url(#hole-mask); /* For Webkit browsers */
-            mask: url(#hole-mask); /* Standard */
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-template-rows: repeat(6, 1fr);
+        }
+        .hole {
+            background: #969696; /* Match backboard color */
+            border-radius: 50%;
+            margin: 10%; /* Creates spacing around holes */
         }
         .piece {
             border-radius: 50%;
@@ -74,12 +80,6 @@
             z-index: 100;
             position: absolute;
             pointer-events: auto; /* Allow touch interaction */
-        }
-        /* Ensure SVG is positioned and sized */
-        svg {
-            position: absolute;
-            top: 0;
-            left: 0;
         }
     </style>
 </head>
@@ -145,37 +145,15 @@
             controlContainer.style.top = `${backBoardHeight}px`;
             message.style.fontSize = `${Math.floor(100 * (smallestSide / 1920))}px`;
 
-            // Recreate SVG mask with proper size
-            const existingSvg = document.querySelector('svg');
-            if (existingSvg) existingSvg.remove();
-            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.setAttribute('width', boardWidth);  // Set non-zero width
-            svg.setAttribute('height', boardHeight); // Set non-zero height
-            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-            const mask = document.createElementNS('http://www.w3.org/2000/svg', 'mask');
-            mask.setAttribute('id', 'hole-mask');
-            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            rect.setAttribute('x', '0');
-            rect.setAttribute('y', '0');
-            rect.setAttribute('width', boardWidth);
-            rect.setAttribute('height', boardHeight);
-            rect.setAttribute('fill', 'white');
-            mask.appendChild(rect);
-            for (let i = 0; i < 7; i++) {
-                for (let j = 0; j < 6; j++) {
-                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    const cx = i * boxSize + boxSize / 2;
-                    const cy = j * boxSize + boxSize / 2;
-                    circle.setAttribute('cx', cx);
-                    circle.setAttribute('cy', cy);
-                    circle.setAttribute('r', circleRadius);
-                    circle.setAttribute('fill', 'black');
-                    mask.appendChild(circle);
+            // Clear and recreate holes
+            board.innerHTML = '';
+            for (let i = 0; i < 6; i++) {
+                for (let j = 0; j < 7; j++) {
+                    const hole = document.createElement('div');
+                    hole.className = 'hole';
+                    board.appendChild(hole);
                 }
             }
-            defs.appendChild(mask);
-            svg.appendChild(defs);
-            container.appendChild(svg);
 
             drawBoard();
         }
@@ -183,7 +161,7 @@
         updateSizes();
         window.addEventListener('resize', updateSizes);
 
-        // Game logic functions (unchanged)
+        // Game logic functions
         function getColumn(x) {
             const moves = getValidMoves();
             const col = Math.floor(x / boxSize);
