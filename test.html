@@ -10,13 +10,14 @@
             align-items: center;
             min-height: 100vh;
             background: #64C864; /* Green background */
+            touch-action: none; /* Prevent default touch behaviors */
         }
         #game-container {
             position: relative;
-            background: #64C864; /* Changed to green to match body */
+            background: #64C864;
         }
         #backboard {
-            background: #969696; /* Grey for backboard only */
+            background: #969696; /* Grey for backboard */
             position: relative;
             overflow: hidden;
         }
@@ -33,7 +34,8 @@
             position: absolute;
             top: 0;
             z-index: 2;
-            mask: url(#hole-mask);
+            -webkit-mask: url(#hole-mask); /* For Webkit browsers */
+            mask: url(#hole-mask); /* Standard */
         }
         .piece {
             border-radius: 50%;
@@ -66,11 +68,12 @@
             align-items: center;
             gap: 20px;
             padding: 10px 0;
-            background: #64C864; /* Green background */
+            background: #64C864;
         }
         #hover-piece {
             z-index: 100;
             position: absolute;
+            pointer-events: auto; /* Allow touch interaction */
         }
     </style>
 </head>
@@ -118,7 +121,7 @@
         // Responsive size updates
         function updateSizes() {
             const smallestSide = Math.min(window.innerWidth, window.innerHeight);
-            window.boxSize = Math.floor(smallestSide * 0.75 / 7); // Made global for use elsewhere
+            window.boxSize = Math.floor(smallestSide * 0.75 / 7);
             window.circleRatio = 0.8;
             window.circleRadius = boxSize * circleRatio / 2;
             const boardWidth = boxSize * 7;
@@ -127,7 +130,7 @@
             const backBoardHeight = boardHeight + greenBoxHeight;
 
             container.style.width = `${boardWidth}px`;
-            container.style.height = `${backBoardHeight + 100}px`; // Buffer for control container
+            container.style.height = `${backBoardHeight + 100}px`;
             backboard.style.width = `${boardWidth}px`;
             backboard.style.height = `${backBoardHeight}px`;
             board.style.width = `${boardWidth}px`;
@@ -168,10 +171,9 @@
             svg.appendChild(defs);
             container.appendChild(svg);
 
-            drawBoard(); // Redraw pieces with new sizes
+            drawBoard();
         }
 
-        // Initial call and resize listener
         updateSizes();
         window.addEventListener('resize', updateSizes);
 
@@ -311,14 +313,16 @@
                     piece.style.height = `${circleRadius * 2}px`;
                     piece.style.background = player === 1 ? '#FFFF00' : '#FF0000';
                     piece.style.boxShadow = '0 0 10px #000';
+                    piece.style.left = `${boxSize * 3}px`; // Center initially
+                    piece.style.top = `${boxSize / 2 - circleRadius}px`;
                     backboard.appendChild(piece);
                 }
 
+                // Mouse events
                 container.onmousemove = (e) => {
                     const rect = container.getBoundingClientRect();
                     const x = e.clientX - rect.left;
                     piece.style.left = `${Math.max(circleRadius, Math.min(x, boxSize * 7 - circleRadius)) - circleRadius}px`;
-                    piece.style.top = `${boxSize / 2 - circleRadius}px`;
                 };
 
                 container.onclick = (e) => {
@@ -328,10 +332,43 @@
                     if (col !== null) {
                         dropCol = col;
                         status = Constants.DROPPING;
-                        const hoverPiece = document.getElementById('hover-piece');
-                        if (hoverPiece) backboard.removeChild(hoverPiece);
+                        backboard.removeChild(piece);
                         container.onmousemove = null;
                         container.onclick = null;
+                    }
+                };
+
+                // Touch events
+                piece.ontouchstart = (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const rect = container.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    piece.style.left = `${Math.max(circleRadius, Math.min(x, boxSize * 7 - circleRadius)) - circleRadius}px`;
+                };
+
+                piece.ontouchmove = (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const rect = container.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    piece.style.left = `${Math.max(circleRadius, Math.min(x, boxSize * 7 - circleRadius)) - circleRadius}px`;
+                };
+
+                piece.ontouchend = (e) => {
+                    e.preventDefault();
+                    const rect = container.getBoundingClientRect();
+                    const x = e.changedTouches[0].clientX - rect.left;
+                    const col = getColumn(x);
+                    if (col !== null) {
+                        dropCol = col;
+                        status = Constants.DROPPING;
+                        backboard.removeChild(piece);
+                        container.onmousemove = null;
+                        container.onclick = null;
+                        piece.ontouchstart = null;
+                        piece.ontouchmove = null;
+                        piece.ontouchend = null;
                     }
                 };
             } else {
