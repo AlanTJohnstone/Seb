@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Connect4b</title>
+    <title>Connect4A</title>
     <style>
         body {
             margin: 0;
@@ -20,28 +20,20 @@
             background: #969696; /* Grey for backboard */
             position: relative;
             overflow: hidden;
+            z-index: 0; /* Base layer */
         }
-        #drop-layer {
+        #piece-layer {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 1;
+            z-index: 1; /* Pieces above backboard */
         }
         #board {
-            background: #0000FF;
             position: absolute;
             top: 0;
-            z-index: 2;
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            grid-template-rows: repeat(6, 1fr);
-        }
-        .hole {
-            background: #969696; /* Match backboard color */
-            border-radius: 50%;
-            margin: 10%; /* Creates spacing around holes */
+            z-index: 2; /* Board above pieces */
         }
         .piece {
             border-radius: 50%;
@@ -77,7 +69,7 @@
             background: #64C864;
         }
         #hover-piece {
-            z-index: 100;
+            z-index: 100; /* Hover piece above all */
             position: absolute;
             pointer-events: auto; /* Allow touch interaction */
         }
@@ -108,13 +100,14 @@
         backboard.id = 'backboard';
         container.appendChild(backboard);
 
-        const dropLayer = document.createElement('div');
-        dropLayer.id = 'drop-layer';
-        backboard.appendChild(dropLayer);
+        const pieceLayer = document.createElement('div');
+        pieceLayer.id = 'piece-layer';
+        backboard.appendChild(pieceLayer);
 
-        const board = document.createElement('div');
+        const board = document.createElement('canvas');
         board.id = 'board';
         backboard.appendChild(board);
+        const ctx = board.getContext('2d');
 
         const controlContainer = document.createElement('div');
         controlContainer.id = 'control-container';
@@ -139,21 +132,35 @@
             container.style.height = `${backBoardHeight + 100}px`;
             backboard.style.width = `${boardWidth}px`;
             backboard.style.height = `${backBoardHeight}px`;
+            pieceLayer.style.width = `${boardWidth}px`;
+            pieceLayer.style.height = `${backBoardHeight}px`;
+            board.width = boardWidth;
+            board.height = boardHeight;
             board.style.width = `${boardWidth}px`;
             board.style.height = `${boardHeight}px`;
             board.style.top = `${greenBoxHeight}px`;
             controlContainer.style.top = `${backBoardHeight}px`;
             message.style.fontSize = `${Math.floor(100 * (smallestSide / 1920))}px`;
 
-            // Clear and recreate holes
-            board.innerHTML = '';
+            // Draw the board with holes on the canvas
+            ctx.clearRect(0, 0, boardWidth, boardHeight);
+            ctx.fillStyle = '#0000FF'; // Blue board
+            ctx.fillRect(0, 0, boardWidth, boardHeight);
+            ctx.globalCompositeOperation = 'destination-out'; // Punch holes
             for (let i = 0; i < 6; i++) {
                 for (let j = 0; j < 7; j++) {
-                    const hole = document.createElement('div');
-                    hole.className = 'hole';
-                    board.appendChild(hole);
+                    ctx.beginPath();
+                    ctx.arc(
+                        j * boxSize + boxSize / 2,
+                        i * boxSize + boxSize / 2,
+                        circleRadius,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fill();
                 }
             }
+            ctx.globalCompositeOperation = 'source-over'; // Reset for future drawing
 
             drawBoard();
         }
@@ -184,7 +191,7 @@
                         piece.style.left = `${col * boxSize + (boxSize - circleRadius * 2) / 2}px`;
                         piece.style.top = `${(5 - row) * boxSize + boxSize + (boxSize - circleRadius * 2) / 2}px`;
                         piece.style.background = state[row][col] === 1 ? '#FFFF00' : '#FF0000';
-                        backboard.appendChild(piece);
+                        pieceLayer.appendChild(piece);
                     }
                 }
             }
@@ -256,7 +263,7 @@
                 pieceElement.style.top = `${dropY}px`;
                 pieceElement.style.background = player === 1 ? '#FFFF00' : '#FF0000';
                 pieceElement.style.boxShadow = '0 0 10px #000';
-                dropLayer.appendChild(pieceElement);
+                pieceLayer.appendChild(pieceElement);
             }
 
             dropY += (finalY - dropY) * 0.05;
@@ -266,7 +273,7 @@
                 dropping = false;
                 const row = state.findIndex(r => r[dropCol] === 0);
                 if (row !== -1) state[row][dropCol] = player;
-                dropLayer.removeChild(pieceElement);
+                pieceLayer.removeChild(pieceElement);
                 drawBoard();
 
                 if (checkWin()) {
