@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Connect4</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #64C864; /* Green background */
+            touch-action: none; /* Prevent default touch behaviors */
+        }
+        #game-container {
+            position: relative;
+            background: #64C864;
+        }
+        #title {
+            color: #0000FF;
+            font-family: Arial, sans-serif;
+            font-size: 48px;
+            text-align: center;
+            padding: 10px 0;
+            position: absolute;
+            width: 100%;
+            top: 0;
+        }
+        #backboard {
+            background: #64C864; /* Changed from grey to green */
+            position: relative;
+            overflow: hidden;
+            z-index: 0; /* Base layer */
+        }
+        #piece-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1; /* Pieces above backboard */
+        }
+        #board {
+            position: absolute;
+            top: 0;
+            z-index: 2; /* Board above pieces */
+        }
+        .piece {
+            border-radius: 50%;
+            position: absolute;
+            pointer-events: none;
+        }
+        #message {
+            color: #0000FF;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        .button {
+            background: #64C864;
+            color: #0000FF;
+            padding: 20px;
+            cursor: pointer;
+            font-family: Arial, sans-serif;
+            border: none;
+            margin: 5px;
+            font-size: 32px;
+        }
+        .button:hover {
+            background: #FFFFFF;
+        }
+        #control-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            padding: 10px 0;
+            background: #64C864;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="title">Connect4</div>
+    </div>
+    <script>
+        const Constants = {
+            STARTING: 0,
+            DROPPING: 1,
+            PLAYING: 2,
+            FINISHED: 4
+        };
+
+        let status = Constants.STARTING;
+        let humanPlayer = null;
+        let player = 1;
+        let state = Array(6).fill().map(() => Array(7).fill(0));
+        let dropping = false;
+        let dropCol, dropX, dropY, finalY;
+        let pieceElement;
+        let aiMoveScheduled = false;
+
+        // DOM elements
+        const container = document.getElementById('game-container');
+        const backboard = document.createElement('div');
+        backboard.id = 'backboard';
+        container.appendChild(backboard);
+
+        const pieceLayer = document.createElement('div');
+        pieceLayer.id = 'piece-layer';
+        backboard.appendChild(pieceLayer);
+
+        const board = document.createElement('canvas');
+        board.id = 'board';
+        backboard.appendChild(board);
+        const ctx = board.getContext('2d');
+
+        const controlContainer = document.createElement('div');
+        controlContainer.id = 'control-container';
+        container.appendChild(controlContainer);
+
+        const message = document.createElement('div');
+        message.id = 'message';
+        controlContainer.appendChild(message);
+
+        // Sound effects
+        const winSounds = [
+            new Audio('connect4/win1.mp3'),
+            new Audio('connect4/win2.mp3'),
+            new Audio('connect4/win3.mp3')
+        ];
+        const loseSounds = [
+            new Audio('connect4/lose1.mp3'),
+            new Audio('connect4/lose2.mp3'),
+            new Audio('connect4/lose3.mp3')
+        ];
+        const drawSound = new Audio('connect4/draw.mp3');
+        const playAgainSound = new Audio('connect4/playAgain.mp3');
+
+        function playSound(result) {
+            let sound;
+            if (result === 'win') {
+                sound = winSounds[Math.floor(Math.random() * winSounds.length)];
+            } else if (result === 'lose') {
+                sound = loseSounds[Math.floor(Math.random() * loseSounds.length)];
+            } else if (result === 'draw') {
+                sound = drawSound;
+            }
+            sound.play();
+            sound.onended = () => {
+                playAgainSound.play();
+            };
+        }
+
+        // Responsive size updates
+        function updateSizes() {
+            const smallestSide = Math.min(window.innerWidth, window.innerHeight);
+            window.boxSize = Math.floor(smallestSide * 0.75 / 7);
+            window.circleRatio = 0.8;
+            window.circleRadius = boxSize * circleRatio / 2;
+            const boardWidth = boxSize * 7;
+            const boardHeight = boxSize * 6;
+            const greenBoxHeight = boxSize;
+            const backBoardHeight = boardHeight + greenBoxHeight;
+            const titleHeight = 68; // 48px font + 20px padding
+            const controlHeight = Math.max(100, boxSize * 1.5);
+
+            container.style.width = `${boardWidth}px`;
+            container.style.height = `${titleHeight + backBoardHeight + controlHeight}px`;
+            
+            backboard.style.width = `${boardWidth}px`;
+            backboard.style.height = `${backBoardHeight}px`;
+            backboard.style.position = 'absolute';
+            backboard.style.top = `${titleHeight}px`;
+            
+            pieceLayer.style.width = `${boardWidth}px`;
+            pieceLayer.style.height = `${backBoardHeight}px`;
+            board.width = boardWidth;
+            board.height = boardHeight;
+            board.style.width = `${boardWidth}px`;
+            board.style.height = `${boardHeight}px`;
+            board.style.top = `${greenBoxHeight}px`;
+            
+            controlContainer.style.position = 'absolute';
+            controlContainer.style.top = `${titleHeight + backBoardHeight}px`;
+            controlContainer.style.height = `${controlHeight}px`;
+            message.style.fontSize = `${Math.floor(100 * (smallestSide / 1920))}px`;
+
+            ctx.clearRect(0, 0, boardWidth, boardHeight);
+            ctx.fillStyle = '#0000FF';
+            ctx.fillRect(0, 0, boardWidth, boardHeight);
+            ctx.globalCompositeOperation = 'destination-out';
+            for (let i = 0; i < 6; i++) {
+                for (let j = 0; j < 7; j++) {
+                    ctx.beginPath();
+                    ctx.arc(
+                        j * boxSize + boxSize / 2,
+                        i * boxSize + boxSize / 2,
+                        circleRadius,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+            }
+            ctx.globalCompositeOperation = 'source-over';
+
+            drawBoard();
+        }
+
+        updateSizes();
+        window.addEventListener('resize', updateSizes);
+
+        // Game logic functions
+        function getColumn(x) {
+            const moves = getValidMoves();
+            const col = Math.floor(x / boxSize);
+            return moves[col] ? col : null;
+        }
+
+        function getValidMoves() {
+            return state[0].map((_, col) => state.every(row => row[col] !== 0) ? 0 : 1);
+        }
+
+        function drawBoard() {
+            document.querySelectorAll('.piece:not(#dropping-piece):not(#hover-piece)').forEach(p => p.remove());
+            for (let row = 0; row < 6; row++) {
+                for (let col = 0; col < 7; col++) {
+                    if (state[row][col] !== 0) {
+                        const piece = document.createElement('div');
+                        piece.className = 'piece';
+                        piece.style.width = `${circleRadius * 2}px`;
+                        piece.style.height = `${circleRadius * 2}px`;
+                        piece.style.left = `${col * boxSize + (boxSize - circleRadius * 2) / 2}px`;
+                        piece.style.top = `${(5 - row) * boxSize + boxSize + (boxSize - circleRadius * 2) / 2}px`;
+                        piece.style.background = state[row][col] === 1 ? '#FFFF00' : '#FF0000';
+                        pieceLayer.appendChild(piece);
+                    }
+                }
+            }
+        }
+
+        function checkWin() {
+            for (let i = 0; i < 6; i++) {
+                for (let j = 0; j < 7; j++) {
+                    if (j + 3 <= 6 && Math.abs(state[i].slice(j, j + 4).reduce((a, b) => a + b, 0)) === 4) return true;
+                    if (i + 3 <= 5 && Math.abs([0, 1, 2, 3].reduce((a, b) => a + state[i + b][j], 0)) === 4) return true;
+                    if (i + 3 <= 5 && j + 3 <= 6 && Math.abs([0, 1, 2, 3].reduce((a, b) => a + state[i + b][j + b], 0)) === 4) return true;
+                    if (i + 3 <= 5 && j - 3 >= 0 && Math.abs([0, 1, 2, 3].reduce((a, b) => a + state[i + b][j - b], 0)) === 4) return true;
+                }
+            }
+            return false;
+        }
+
+        function isBoardFull() {
+            return state.every(row => row.every(cell => cell !== 0));
+        }
+
+        function checkPotentialWin(playerNum) {
+            const originalState = state.map(row => [...row]);
+            for (let col = 0; col < 7; col++) {
+                const tempState = originalState.map(row => [...row]);
+                const row = tempState.findIndex(r => r[col] === 0);
+                if (row !== -1) {
+                    tempState[row][col] = playerNum;
+                    state = tempState;
+                    if (checkWin()) {
+                        state = originalState;
+                        return col;
+                    }
+                    state = originalState;
+                }
+            }
+            state = originalState;
+            return -1;
+        }
+
+        function createsForcedWin(col, playerNum) {
+            const originalState = state.map(row => [...row]);
+            const tempState = originalState.map(row => [...row]);
+            const row = tempState.findIndex(r => r[col] === 0);
+            if (row === -1) return false;
+            
+            tempState[row][col] = playerNum;
+            state = tempState;
+            
+            let winningMoves = 0;
+            let totalValidMoves = 0;
+            
+            for (let checkCol = 0; checkCol < 7; checkCol++) {
+                const tempState2 = tempState.map(row => [...row]);
+                const checkRow = tempState2.findIndex(r => r[checkCol] === 0);
+                if (checkRow !== -1) {
+                    totalValidMoves++;
+                    tempState2[checkRow][checkCol] = -playerNum;
+                    state = tempState2;
+                    if (!checkWin()) {
+                        tempState2[checkRow][checkCol] = playerNum;
+                        state = tempState2;
+                        if (checkWin()) winningMoves++;
+                    }
+                    state = tempState;
+                }
+            }
+            
+            state = originalState;
+            return winningMoves > 0 && winningMoves === totalValidMoves;
+        }
+
+        function evaluatePosition(col, playerNum) {
+            const originalState = state.map(row => [...row]);
+            const tempState = originalState.map(row => [...row]);
+            const row = tempState.findIndex(r => r[col] === 0);
+            if (row === -1) return -1;
+            
+            let score = 0;
+            
+            if (col === 3) score += 10;
+            if (row > 0 && tempState[row - 1][col] === playerNum) score += 15;
+            
+            tempState[row][col] = playerNum;
+            state = tempState;
+            for (let i = 0; i < 6; i++) {
+                for (let j = 0; j < 7; j++) {
+                    if (j + 3 <= 6) {
+                        const horizontal = state[i].slice(j, j + 4);
+                        if (horizontal.filter(x => x === playerNum).length === 3 && horizontal.includes(0)) score += 20;
+                    }
+                    if (i + 3 <= 5) {
+                        const vertical = [state[i][j], state[i+1][j], state[i+2][j], state[i+3][j]];
+                        if (vertical.filter(x => x === playerNum).length === 3 && vertical.includes(0)) score += 20;
+                    }
+                    if (i + 3 <= 5 && j + 3 <= 6) {
+                        const diag1 = [state[i][j], state[i+1][j+1], state[i+2][j+2], state[i+3][j+3]];
+                        if (diag1.filter(x => x === playerNum).length === 3 && diag1.includes(0)) score += 20;
+                    }
+                    if (i + 3 <= 5 && j - 3 >= 0) {
+                        const diag2 = [state[i][j], state[i+1][j-1], state[i+2][j-2], state[i+3][j-3]];
+                        if (diag2.filter(x => x === playerNum).length === 3 && diag2.includes(0)) score += 20;
+                    }
+                }
+            }
+            state = originalState;
+            return score;
+        }
+
+        function checkDoubleThreat(playerNum) {
+            const originalState = state.map(row => [...row]);
+            const validCols = getValidMoves().map((m, i) => m ? i : -1).filter(i => i !== -1);
+            
+            for (let col of validCols) {
+                const tempState = originalState.map(row => [...row]);
+                const row = tempState.findIndex(r => r[col] === 0);
+                if (row === -1) continue;
+                
+                tempState[row][col] = playerNum;
+                state = tempState;
+                
+                let threatCount = 0;
+                for (let checkCol of validCols) {
+                    const tempState2 = tempState.map(row => [...row]);
+                    const checkRow = tempState2.findIndex(r => r[checkCol] === 0);
+                    if (checkRow !== -1) {
+                        tempState2[checkRow][checkCol] = playerNum;
+                        state = tempState2;
+                        if (checkWin()) threatCount++;
+                        state = tempState;
+                    }
+                }
+                
+                state = originalState;
+                if (threatCount >= 2) return col;
+            }
+            
+            state = originalState;
+            return -1;
+        }
+
+        function doStarting() {
+            message.textContent = "Do you want to start?";
+            const existingYes = document.getElementById('yes-btn');
+            if (!existingYes) {
+                const yesBtn = document.createElement('button');
+                yesBtn.id = 'yes-btn';
+                yesBtn.className = 'button';
+                yesBtn.textContent = 'Yes';
+                yesBtn.onclick = () => {
+                    humanPlayer = 1;
+                    status = Constants.PLAYING;
+                    controlContainer.removeChild(yesBtn);
+                    controlContainer.removeChild(document.getElementById('no-btn'));
+                    message.textContent = '';
+                };
+                controlContainer.appendChild(yesBtn);
+
+                const noBtn = document.createElement('button');
+                noBtn.id = 'no-btn';
+                noBtn.className = 'button';
+                noBtn.textContent = 'No';
+                noBtn.onclick = () => {
+                    humanPlayer = -1;
+                    status = Constants.PLAYING;
+                    controlContainer.removeChild(yesBtn);
+                    controlContainer.removeChild(noBtn);
+                    message.textContent = '';
+                };
+                controlContainer.appendChild(noBtn);
+            }
+            state = Array(6).fill().map(() => Array(7).fill(0));
+            drawBoard();
+        }
+
+        function doDropping() {
+            if (!dropping) {
+                dropping = true;
+                dropX = dropCol * boxSize + (boxSize - circleRadius * 2) / 2;
+                dropY = boxSize / 2 - circleRadius;
+                const row = state.findIndex(r => r[dropCol] === 0);
+                finalY = (5 - row) * boxSize + boxSize + (boxSize - circleRadius * 2) / 2;
+                pieceElement = document.createElement('div');
+                pieceElement.id = 'dropping-piece';
+                pieceElement.className = 'piece';
+                pieceElement.style.width = `${circleRadius * 2}px`;
+                pieceElement.style.height = `${circleRadius * 2}px`;
+                pieceElement.style.left = `${dropX}px`;
+                pieceElement.style.top = `${dropY}px`;
+                pieceElement.style.background = player === 1 ? '#FFFF00' : '#FF0000';
+                pieceElement.style.boxShadow = '0 0 10px #000';
+                pieceLayer.appendChild(pieceElement);
+            }
+
+            dropY += (finalY - dropY) * 0.05;
+            pieceElement.style.top = `${dropY}px`;
+
+            if (Math.abs(dropY - finalY) < 1) {
+                dropping = false;
+                const row = state.findIndex(r => r[dropCol] === 0);
+                if (row !== -1) state[row][dropCol] = player;
+                pieceLayer.removeChild(pieceElement);
+                drawBoard();
+
+                if (checkWin()) {
+                    status = Constants.FINISHED;
+                    if (player === humanPlayer) {
+                        message.textContent = "You win, click to start again";
+                        playSound('win');
+                    } else {
+                        message.textContent = "I win, click to start again";
+                        playSound('lose');
+                    }
+                } else if (isBoardFull()) {
+                    status = Constants.FINISHED;
+                    message.textContent = "It's a draw, click to start again";
+                    playSound('draw');
+                } else {
+                    status = Constants.PLAYING;
+                    player = -player;
+                    aiMoveScheduled = false;
+                }
+            }
+        }
+
+        function doPlaying() {
+            if (status !== Constants.PLAYING) return;
+
+            if (player === humanPlayer) {
+                message.textContent = "It's your turn";
+                let piece = document.getElementById('hover-piece');
+                if (!piece) {
+                    piece = document.createElement('div');
+                    piece.id = 'hover-piece';
+                    piece.className = 'piece';
+                    piece.style.width = `${circleRadius * 2}px`;
+                    piece.style.height = `${circleRadius * 2}px`;
+                    piece.style.background = player === 1 ? '#FFFF00' : '#FF0000';
+                    piece.style.boxShadow = '0 0 10px #000';
+                    piece.style.left = `${boxSize * 3}px`;
+                    piece.style.top = `${boxSize / 2 - circleRadius}px`;
+                    backboard.appendChild(piece);
+                }
+
+                container.onmousemove = (e) => {
+                    const rect = container.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    piece.style.left = `${Math.max(circleRadius, Math.min(x, boxSize * 7 - circleRadius)) - circleRadius}px`;
+                };
+
+                container.onclick = (e) => {
+                    const rect = container.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const col = getColumn(x);
+                    if (col !== null) {
+                        dropCol = col;
+                        status = Constants.DROPPING;
+                        backboard.removeChild(piece);
+                        container.onmousemove = null;
+                        container.onclick = null;
+                    }
+                };
+
+                piece.ontouchstart = (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const rect = container.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    piece.style.left = `${Math.max(circleRadius, Math.min(x, boxSize * 7 - circleRadius)) - circleRadius}px`;
+                };
+
+                piece.ontouchmove = (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const rect = container.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    piece.style.left = `${Math.max(circleRadius, Math.min(x, boxSize * 7 - circleRadius)) - circleRadius}px`;
+                };
+
+                piece.ontouchend = (e) => {
+                    e.preventDefault();
+                    const rect = container.getBoundingClientRect();
+                    const x = e.changedTouches[0].clientX - rect.left;
+                    const col = getColumn(x);
+                    if (col !== null) {
+                        dropCol = col;
+                        status = Constants.DROPPING;
+                        backboard.removeChild(piece);
+                        container.onmousemove = null;
+                        container.onclick = null;
+                        piece.ontouchstart = null;
+                        piece.ontouchmove = null;
+                        piece.ontouchend = null;
+                    }
+                };
+            } else {
+                if (!aiMoveScheduled) {
+                    message.textContent = "I am thinking!";
+                    aiMoveScheduled = true;
+                    setTimeout(() => {
+                        if (status !== Constants.PLAYING) return;
+                        const moves = getValidMoves();
+                        const validCols = moves.map((m, i) => m ? i : -1).filter(i => i !== -1);
+                        const originalState = state.map(row => [...row]);
+                        
+                        const winningMove = checkPotentialWin(player);
+                        if (winningMove !== -1) {
+                            dropCol = winningMove;
+                            status = Constants.DROPPING;
+                            state = originalState;
+                            return;
+                        }
+
+                        const blockingMove = checkPotentialWin(-player);
+                        if (blockingMove !== -1) {
+                            dropCol = blockingMove;
+                            status = Constants.DROPPING;
+                            state = originalState;
+                            return;
+                        }
+
+                        let safeCols = validCols.filter(col => {
+                            const tempState = originalState.map(row => [...row]);
+                            const row = tempState.findIndex(r => r[col] === 0);
+                            if (row === -1) return false;
+                            tempState[row][col] = player;
+                            state = tempState;
+                            const humanWins = checkPotentialWin(-player) !== -1;
+                            state = originalState;
+                            return !humanWins;
+                        });
+
+                        if (safeCols.length === 0) safeCols = validCols;
+
+                        const doubleThreatCol = checkDoubleThreat(-player);
+                        if (doubleThreatCol !== -1) {
+                            dropCol = doubleThreatCol;
+                            status = Constants.DROPPING;
+                            state = originalState;
+                            return;
+                        }
+
+                        for (let col of safeCols) {
+                            if (createsForcedWin(col, player)) {
+                                dropCol = col;
+                                status = Constants.DROPPING;
+                                state = originalState;
+                                return;
+                            }
+                        }
+
+                        let bestCol = safeCols[0];
+                        let bestScore = -1;
+                        for (let col of safeCols) {
+                            const score = evaluatePosition(col, player);
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestCol = col;
+                            }
+                        }
+                        dropCol = bestCol;
+                        status = Constants.DROPPING;
+                        state = originalState;
+                    }, 500);
+                }
+            }
+            drawBoard();
+        }
+
+        function doFinished() {
+            container.onclick = () => {
+                status = Constants.STARTING;
+                humanPlayer = null;
+                player = 1;
+                state = Array(6).fill().map(() => Array(7).fill(0));
+                container.onclick = null;
+                aiMoveScheduled = false;
+            };
+        }
+
+        function gameLoop() {
+            switch (status) {
+                case Constants.STARTING: doStarting(); break;
+                case Constants.DROPPING: doDropping(); break;
+                case Constants.PLAYING: doPlaying(); break;
+                case Constants.FINISHED: doFinished(); break;
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
