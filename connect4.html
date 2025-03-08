@@ -9,8 +9,8 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background: #64C864; /* Green background */
-            touch-action: none; /* Prevent default touch behaviors */
+            background: #64C864;
+            touch-action: none; /* Restored to prevent accidental board touches */
         }
         #game-container {
             position: relative;
@@ -27,10 +27,10 @@
             top: 0;
         }
         #backboard {
-            background: #64C864; /* Changed from grey to green */
+            background: #64C864;
             position: relative;
             overflow: hidden;
-            z-index: 0; /* Base layer */
+            z-index: 0;
         }
         #piece-layer {
             position: absolute;
@@ -38,24 +38,29 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 1; /* Pieces above backboard */
+            z-index: 1;
         }
         #board {
             position: absolute;
             top: 0;
-            z-index: 2; /* Board above pieces */
+            z-index: 2;
         }
         .piece {
             border-radius: 50%;
             position: absolute;
-            pointer-events: none;
+            pointer-events: none; /* Default: no pointer events */
+        }
+        #hover-piece {
+            touch-action: auto; /* Enable touch on hover piece only */
+            pointer-events: auto; /* Enable pointer events on hover piece */
         }
         #message {
             color: #0000FF;
             font-family: Arial, sans-serif;
             text-align: center;
-            cursor: pointer; /* Add cursor pointer to indicate clickability */
-            user-select: none; /* Prevent text selection */
+            cursor: pointer;
+            user-select: none;
+            touch-action: auto; /* Allow touch on message in FINISHED state */
         }
         .button {
             background: #64C864;
@@ -66,6 +71,7 @@
             border: none;
             margin: 5px;
             font-size: 32px;
+            touch-action: auto; /* Allow touch on buttons */
         }
         .button:hover {
             background: #FFFFFF;
@@ -125,7 +131,7 @@
         message.id = 'message';
         controlContainer.appendChild(message);
 
-        // Sound effects
+        // Sound effects (unchanged)
         const winSounds = [
             new Audio('connect4/win1.mp3'),
             new Audio('connect4/win2.mp3'),
@@ -154,7 +160,7 @@
             };
         }
 
-        // Responsive size updates
+        // Responsive size updates (unchanged)
         function updateSizes() {
             const smallestSide = Math.min(window.innerWidth, window.innerHeight);
             window.boxSize = Math.floor(smallestSide * 0.75 / 7);
@@ -164,7 +170,7 @@
             const boardHeight = boxSize * 6;
             const greenBoxHeight = boxSize;
             const backBoardHeight = boardHeight + greenBoxHeight;
-            const titleHeight = 68; // 48px font + 20px padding
+            const titleHeight = 68;
             const controlHeight = Math.max(100, boxSize * 1.5);
 
             container.style.width = `${boardWidth}px`;
@@ -187,7 +193,7 @@
             controlContainer.style.top = `${titleHeight + backBoardHeight}px`;
             controlContainer.style.height = `${controlHeight}px`;
             message.style.fontSize = `${Math.floor(100 * (smallestSide / 1920))}px`;
-            message.style.padding = '10px'; // Add some padding to make it a bigger click target
+            message.style.padding = '10px';
 
             ctx.clearRect(0, 0, boardWidth, boardHeight);
             ctx.fillStyle = '#0000FF';
@@ -214,7 +220,7 @@
         updateSizes();
         window.addEventListener('resize', updateSizes);
 
-        // Game logic functions
+        // Game logic functions (unchanged)
         function getColumn(x) {
             const moves = getValidMoves();
             const col = Math.floor(x / boxSize);
@@ -482,6 +488,7 @@
                     backboard.appendChild(piece);
                 }
 
+                // Mouse controls (unchanged)
                 container.onmousemove = (e) => {
                     const rect = container.getBoundingClientRect();
                     const x = e.clientX - rect.left;
@@ -498,26 +505,30 @@
                         backboard.removeChild(piece);
                         container.onmousemove = null;
                         container.onclick = null;
+                        piece.removeEventListener('touchstart', piece.ontouchstart);
+                        piece.removeEventListener('touchmove', piece.ontouchmove);
+                        piece.removeEventListener('touchend', piece.ontouchend);
                     }
                 };
 
-                piece.ontouchstart = (e) => {
+                // Touch controls
+                piece.addEventListener('touchstart', (e) => {
                     e.preventDefault();
                     const touch = e.touches[0];
                     const rect = container.getBoundingClientRect();
                     const x = touch.clientX - rect.left;
                     piece.style.left = `${Math.max(circleRadius, Math.min(x, boxSize * 7 - circleRadius)) - circleRadius}px`;
-                };
+                }, { passive: false });
 
-                piece.ontouchmove = (e) => {
+                piece.addEventListener('touchmove', (e) => {
                     e.preventDefault();
                     const touch = e.touches[0];
                     const rect = container.getBoundingClientRect();
                     const x = touch.clientX - rect.left;
                     piece.style.left = `${Math.max(circleRadius, Math.min(x, boxSize * 7 - circleRadius)) - circleRadius}px`;
-                };
+                }, { passive: false });
 
-                piece.ontouchend = (e) => {
+                piece.addEventListener('touchend', (e) => {
                     e.preventDefault();
                     const rect = container.getBoundingClientRect();
                     const x = e.changedTouches[0].clientX - rect.left;
@@ -528,11 +539,11 @@
                         backboard.removeChild(piece);
                         container.onmousemove = null;
                         container.onclick = null;
-                        piece.ontouchstart = null;
-                        piece.ontouchmove = null;
-                        piece.ontouchend = null;
+                        piece.removeEventListener('touchstart', piece.ontouchstart);
+                        piece.removeEventListener('touchmove', piece.ontouchmove);
+                        piece.removeEventListener('touchend', piece.ontouchend);
                     }
-                };
+                }, { passive: false });
             } else {
                 if (!aiMoveScheduled) {
                     message.textContent = "I am thinking!";
@@ -609,15 +620,14 @@
 
         function doFinished() {
             message.onclick = (e) => {
-                e.stopPropagation(); // Prevent the click from bubbling up to the container
+                e.stopPropagation();
                 status = Constants.STARTING;
                 humanPlayer = null;
                 player = 1;
                 state = Array(6).fill().map(() => Array(7).fill(0));
-                message.onclick = null; // Clean up the listener
+                message.onclick = null;
                 aiMoveScheduled = false;
             };
-            // Remove the container listener if it exists
             container.onclick = null;
         }
 
