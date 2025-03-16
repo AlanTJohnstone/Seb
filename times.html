@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="windows-1252">
+    <title>Seb's Multiplications</title>
+    <style>
+        body {
+            text-align: center;
+            background-color: #f0f8ff;
+            color: #333333;
+            font-family: Arial, sans-serif;
+            font-size: 30px;
+        }
+
+        #questionContainer, #timerContainer, #endMessage, #congratsScreen, #playAgainButton {
+            display: none;
+        }
+
+        #questionContainer {
+            margin-top: 20px;
+            font-size: 72px;
+        }
+
+        input {
+            font-size: 72px;
+            padding: 10px;
+            width: 160px;
+        }
+
+        #timerContainer {
+            margin-top: 20px;
+            font-size: 72px;
+            color: #7393B3;
+        }
+
+        button {  /* Added this new rule */
+            margin-top: 20px;
+            font-size: 36px;
+            padding: 10px 20px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #endMessage {
+            font-size: 36px;
+            color: #7393B3;
+        }
+
+        #bestTimes {
+            font-size: 60px;
+            margin-top: 40px;
+        }
+
+        #congratsScreen {
+            font-size: 60px;
+            color: #7393B3;
+        }
+    </style>
+    <script>
+        let timerInterval;
+        let correctAnswers = 0;
+        let wrongAnswers = 0;
+
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                let date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/";
+        }
+
+        function getCookie(name) {
+            let nameEQ = name + "=";
+            let ca = document.cookie.split(';');
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
+        function getRandomNumber() {
+            return Math.floor(Math.random() * 13);
+        }
+
+        function playSound(fileName, callback) {
+            var audio = new Audio('numberFiles/'+fileName);
+            audio.play();
+            audio.addEventListener('ended', function() {
+                if (callback) callback();
+            });
+        }
+
+        function generateQuestion() {
+            var num1 = getRandomNumber();
+            var num2 = getRandomNumber();
+            
+            var questionText, answer, soundSequence;
+
+            
+            questionText = num1 + ' x ' + num2;
+            answer = num1 * num2;
+            soundSequence = [num1 + '.mp3', 'times.mp3', num2 + '.mp3'];
+            
+
+            document.getElementById('question').innerText = questionText;
+            document.getElementById('answer').value = '';
+            document.getElementById('answer').dataset.sum = answer;
+
+            function playSounds(sequence, index = 0) {
+                if (index < sequence.length) {
+                    playSound(sequence[index], function() {
+                        playSounds(sequence, index + 1);
+                    });
+                }
+            }
+            playSounds(soundSequence);
+        }
+
+        function checkAnswer() {
+            var answerInput = document.getElementById('answer');
+            var userAnswer = parseInt(answerInput.value);
+            var correctAnswer = parseInt(answerInput.dataset.sum);
+
+            if (userAnswer === correctAnswer) {
+                correctAnswers++;
+                playSound('good.mp3', function() {
+                    setTimeout(generateQuestion, 1000);
+                });
+            } else {
+                wrongAnswers++;
+                playSound('bad.mp3', function() {
+                    answerInput.value = '';
+                });
+            }
+        }
+
+        function startTimer(display) {
+            var timer = 60;
+            timerInterval = setInterval(function () {
+                var seconds = parseInt(timer % 60, 10);
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+                display.textContent = "Remaining Time: " + seconds + " Seconds";
+
+                if (--timer < 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('answer').disabled = true;
+                    let bestTimes = parseInt(getCookie('bestTimesScore') || '0');
+                    if (correctAnswers > bestTimes) {
+                        setCookie('bestTimesScore', correctAnswers, 365);
+                        showCongratsScreen(correctAnswers);
+                    } else {
+                        document.getElementById('endMessage').style.display = 'block';
+                        document.getElementById('endMessage').innerText = 
+                            `Time's up! Correct Answers: ${correctAnswers}, Wrong Answers: ${wrongAnswers}`;
+                        document.getElementById('startButton').style.display = 'block';
+                        document.getElementById('bestTimes').style.display = 'block';
+                        document.getElementById('questionContainer').style.display = 'none';
+                        document.getElementById('timerContainer').style.display = 'none';
+                    }
+                }
+            }, 1000);
+        }
+
+        function showCongratsScreen(newScore) {
+            document.getElementById('questionContainer').style.display = 'none';
+            document.getElementById('timerContainer').style.display = 'none';
+            document.getElementById('congratsScreen').style.display = 'block';
+            document.getElementById('congratsMessage').innerText = 
+                `Congratulations, your best score is now ${newScore}!`;
+            playSound('congratulations.mp3', function() {
+                document.getElementById('playAgainButton').style.display = 'block';
+            })
+            
+        }
+
+        function resetGame() {
+            document.getElementById('congratsScreen').style.display = 'none';
+            document.getElementById('endMessage').style.display = 'none';
+            document.getElementById('questionContainer').style.display = 'block';
+            document.getElementById('timerContainer').style.display = 'block';
+            document.getElementById('answer').disabled = false;
+	    document.getElementById('playAgainButton').style.display = 'none';
+            correctAnswers = 0;
+            wrongAnswers = 0;
+            updatebestTimesDisplay();
+            startTimer(document.getElementById('timer'));
+            generateQuestion();
+        }
+
+        function updatebestTimesDisplay() {
+            let bestTimesScore = getCookie('bestTimesScore') || '0';
+            document.getElementById('bestTimes').innerText = 
+                `Your Highest Score: ${bestTimesScore}`;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var display = document.getElementById('timer');
+            updatebestTimesDisplay();
+
+            document.getElementById('startButton').addEventListener('click', function () {
+                document.getElementById('startButton').style.display = 'none';
+                document.getElementById('bestTimes').style.display = 'none';
+                document.getElementById('endMessage').style.display = 'none';
+                document.getElementById('answer').disabled = false;
+                document.getElementById('questionContainer').style.display = 'block';
+                document.getElementById('timerContainer').style.display = 'block';
+                correctAnswers = 0;
+                wrongAnswers = 0;
+                startTimer(display);
+                generateQuestion();
+            });
+
+            document.getElementById('answer').addEventListener('keydown', function(event) {
+                if (event.key === 'Enter' || event.key === 'Return') {
+                    event.preventDefault();
+                    checkAnswer();
+                }
+            });
+
+            document.getElementById('playAgainButton').addEventListener('click', resetGame);
+        });
+    </script>
+</head>
+<body>
+    <h1>Seb's Multiplications</h1>
+    <button id="startButton">Start</button>
+    <div id="bestTimes"></div>
+    <div id="questionContainer">
+        <span id="question"></span>
+        <span>=</span>
+        <input type="number" id="answer" />
+    </div>
+    <div id="timerContainer">
+        <div id="timer">Remaining Time: 60 Seconds</div>
+    </div>
+    <div id="endMessage">Time's up! Good job!</div>
+    <div id="congratsScreen">
+        <div id="congratsMessage"></div>
+        <button id="playAgainButton">Play again?</button>
+    </div>
+</body>
