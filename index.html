@@ -63,14 +63,14 @@
         const bug = document.getElementById('bug');
         const bugWidth = 100;
         const bugHeight = 100;
-        
+
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
         let bugPosX = Math.random() * (viewportWidth - bugWidth);
         let bugPosY = Math.random() * (viewportHeight - bugHeight);
         let lastBugPosX = bugPosX;
         let lastBugPosY = bugPosY;
-        
+
         bug.style.transform = `translate(${bugPosX}px, ${bugPosY}px) rotate(45deg)`;
 
         let degreeAngle = 45;
@@ -83,8 +83,14 @@
         let alternate = true;
         let isOffScreen = false;
 
+        // Preload Images
+        const bugImage1 = new Image();
+        bugImage1.src = 'bug.png';
+        const bugImage2 = new Image();
+        bugImage2.src = 'bug2.png';
+
         function updateBugImage() {
-            bug.src = alternate ? 'bug.png' : 'bug2.png';
+            bug.src = alternate ? bugImage1.src : bugImage2.src;
             alternate = !alternate;
         }
 
@@ -97,22 +103,22 @@
                 lastBugPosX = bugPosX;
                 lastBugPosY = bugPosY;
             }
-            
+
             angleChange = angleChange * 0.75 + (Math.random() - 0.5) * angleChangeAmount;
             degreeAngle = mod(degreeAngle + angleChange, 360);
             angle = degreeAngle * Math.PI / 180;
             count = 0;
-            
+
             const nextInterval = Math.max(1000 * Math.random(), 50);
             setTimeout(updateDirection, nextInterval);
         }
 
         function updatePosition() {
             if (isOffScreen) return;
-            
+
             updateBugImage();
             count += timerInt;
-            
+
             bugPosX = lastBugPosX + count * speed * Math.sin(angle);
             bugPosY = lastBugPosY - count * speed * Math.cos(angle);
 
