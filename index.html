@@ -13,7 +13,9 @@
             height: 100vh;
             margin: 0;
             font-family: Arial, sans-serif;
-            background-color: #b7d6fa; /* grey-blue */
+            background-color: #b7d6fa;
+            overflow: hidden;
+            position: relative;
         }
         h1 {
             font-size: 50px;
@@ -21,7 +23,7 @@
         }
         .list-container {
             position: relative;
-            top: -30px; /* Adjust this value to move the list further up */
+            top: -30px;
         }
         ul {
             list-style: none;
@@ -31,6 +33,16 @@
             font-size: 30px;
             margin: 10px 0;
         }
+        #bug {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            transition: transform 0.08s linear;
+            z-index: 9999;
+            pointer-events: none;
+            left: 0;
+            top: 0;
+        }
     </style>
 </head>
 <body>
@@ -38,13 +50,121 @@
     <div class="list-container">
         <ul>
             <li><a href="plusMinus.html">Seb's Sums</a></li>
-	        <li><a href="times.html">Seb's Multiplications</a></li>
+            <li><a href="times.html">Seb's Multiplications</a></li>
             <li><a href="words.html">Seb's Words</a></li>
             <li><a href="sayings.html">Seb's Sayings</a></li>
             <li><a href="anagrams.html">Seb's Anagrams</a></li>
-	        <li><a href="connect4.html">Seb's Game</a></li>
-	        <li><a href="test.html">Seb's test</a></li>
+            <li><a href="connect4.html">Seb's Game</a></li>
+            <li><a href="test.html">Seb's test</a></li>
         </ul>
     </div>
+    <img id="bug" src="bug.png" alt="bug">
+    <script>
+        const bug = document.getElementById('bug');
+        const bugWidth = 100;
+        const bugHeight = 100;
+        
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        let bugPosX = Math.random() * (viewportWidth - bugWidth);
+        let bugPosY = Math.random() * (viewportHeight - bugHeight);
+        let lastBugPosX = bugPosX;
+        let lastBugPosY = bugPosY;
+        
+        bug.style.transform = `translate(${bugPosX}px, ${bugPosY}px) rotate(45deg)`;
+
+        let degreeAngle = 45;
+        let angle = degreeAngle * Math.PI / 180;
+        let speed = 150;
+        let angleChangeAmount = 50;
+        let angleChange = 0;
+        let count = 0;
+        const timerInt = 0.08;
+        let alternate = true;
+        let isOffScreen = false;
+
+        function updateBugImage() {
+            bug.src = alternate ? 'bug.png' : 'bug2.png';
+            alternate = !alternate;
+        }
+
+        function mod(n, m) {
+            return ((n % m) + m) % m;
+        }
+
+        function updateDirection() {
+            if (!isOffScreen) {
+                lastBugPosX = bugPosX;
+                lastBugPosY = bugPosY;
+            }
+            
+            angleChange = angleChange * 0.75 + (Math.random() - 0.5) * angleChangeAmount;
+            degreeAngle = mod(degreeAngle + angleChange, 360);
+            angle = degreeAngle * Math.PI / 180;
+            count = 0;
+            
+            const nextInterval = Math.max(1000 * Math.random(), 50);
+            setTimeout(updateDirection, nextInterval);
+        }
+
+        function updatePosition() {
+            if (isOffScreen) return;
+            
+            updateBugImage();
+            count += timerInt;
+            
+            bugPosX = lastBugPosX + count * speed * Math.sin(angle);
+            bugPosY = lastBugPosY - count * speed * Math.cos(angle);
+
+            if (bugPosX <= -bugWidth) {
+                isOffScreen = true;
+                bug.style.display = 'none';
+                setTimeout(() => {
+                    bugPosX = viewportWidth - 1;
+                    lastBugPosX = bugPosX;
+                    bug.style.transform = `translate(${bugPosX}px, ${bugPosY}px) rotate(${degreeAngle}deg)`;
+                    bug.style.display = 'block';
+                    isOffScreen = false;
+                }, 50);
+            } else if (bugPosX >= viewportWidth) {
+                isOffScreen = true;
+                bug.style.display = 'none';
+                setTimeout(() => {
+                    bugPosX = -bugWidth + 1;
+                    lastBugPosX = bugPosX;
+                    bug.style.transform = `translate(${bugPosX}px, ${bugPosY}px) rotate(${degreeAngle}deg)`;
+                    bug.style.display = 'block';
+                    isOffScreen = false;
+                }, 50);
+            } else if (bugPosY <= -bugHeight) {
+                isOffScreen = true;
+                bug.style.display = 'none';
+                setTimeout(() => {
+                    bugPosY = viewportHeight - 1;
+                    lastBugPosY = bugPosY;
+                    bug.style.transform = `translate(${bugPosX}px, ${bugPosY}px) rotate(${degreeAngle}deg)`;
+                    bug.style.display = 'block';
+                    isOffScreen = false;
+                }, 50);
+            } else if (bugPosY >= viewportHeight) {
+                isOffScreen = true;
+                bug.style.display = 'none';
+                setTimeout(() => {
+                    bugPosY = -bugHeight + 1;
+                    lastBugPosY = bugPosY;
+                    bug.style.transform = `translate(${bugPosX}px, ${bugPosY}px) rotate(${degreeAngle}deg)`;
+                    bug.style.display = 'block';
+                    isOffScreen = false;
+                }, 50);
+            }
+
+            if (!isOffScreen) {
+                bug.style.transform = `translate(${bugPosX}px, ${bugPosY}px) rotate(${degreeAngle}deg)`;
+            }
+        }
+
+        setInterval(updatePosition, 80);
+        setTimeout(updateDirection, 1000);
+    </script>
 </body>
 </html>
