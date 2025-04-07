@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="windows-1252">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harry Potter Quiz</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        h1 {
+            margin: 20px 0;
+            font-size: 60px;
+        }
+        h2, button {
+            margin: 20px 0;
+            font-size: 40px;
+        }
+        p#intro-text {
+            font-size: 24px;
+            text-align: center;
+            max-width: 600px;
+            margin: 20px 0;
+        }
+        .game-container {
+            width: 800px;
+            margin: 50px auto;
+            position: relative;
+            display: none; /* Hidden initially for intro page */
+        }
+        #question {
+            font-size: 40px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        #options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        label {
+            display: flex;
+            align-items: center;
+            font-size: 30px;
+            background-color: lightblue;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: transform 0.3s ease, background-color 0.2s ease;
+        }
+        label:hover {
+            background-color: #add8e6;
+            transform: scale(1.02);
+        }
+        input[type="radio"] {
+            margin-right: 10px;
+            width: 20px;
+            height: 20px;
+        }
+        button, input[type="submit"] {
+            background-color: lightblue;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, background-color 0.2s ease;
+        }
+        button:hover, input[type="submit"]:hover {
+            background-color: #add8e6;
+            transform: scale(1.05);
+        }
+        #message {
+            margin-top: 20px;
+            font-size: 24px;
+            color: green;
+            text-align: center;
+        }
+        audio {
+            display: none;
+        }
+        #play-question {
+          font-size: 20px;
+          padding: 8px 16px;
+          margin-top: 10px;
+          display: block;
+          margin-left: auto;
+          margin-right: auto;
+        }
+        @media (max-width: 600px) {
+            .game-container {
+                width: 100%;
+            }
+            #question {
+                font-size: 30px;
+            }
+            label {
+                font-size: 24px;
+                padding: 8px;
+            }
+            input[type="radio"] {
+                width: 16px;
+                height: 16px;
+            }
+            button, input[type="submit"] {
+                font-size: 30px;
+                padding: 8px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Harry Potter Quiz</h1>
+    <p id="intro-text">Test your knowledge of the magical world of Harry Potter! Answer questions about characters, spells, and more. Listen to the question audio for clues, select the correct answer, and get instant feedback. Ready to begin?</p>
+    <button id="startButton">Start</button>
+
+    <div class="game-container" id="game-container">
+        <p id="question"></p>
+        <form id="quiz-form">
+            <div id="options"></div>
+            <input type="submit" value="Submit">
+        </form>
+        <div id="message"></div>
+        <button id="play-question">Play Question Audio</button>
+    </div>
+
+    <audio id="question-audio" preload="none"></audio>
+    <audio id="correct-audio" preload="auto" src="https://ATJ.pythonanywhere.com//static/correct.mp3"></audio>
+    <audio id="wrong-audio" preload="auto" src="https://ATJ.pythonanywhere.com//static/wrong.mp3"></audio>
+    <audio id="answer-audio" preload="auto"></audio>
+
+    <script>
+        let currentCorrectAnswer = '';
+        let currentQuestion = '';
+        let currentAnswerAudio = '';
+        const correctAudio = document.getElementById('correct-audio');
+        const wrongAudio = document.getElementById('wrong-audio');
+        const answerAudio = document.getElementById('answer-audio');
+        const message = document.getElementById('message');
+        const QUESTION_URL = 'https://ATJ.pythonanywhere.com/get_question';
+        // Intro page functionality
+        const startButton = document.getElementById('startButton');
+        const gameContainer = document.getElementById('game-container');
+        const introText = document.getElementById('intro-text');
+
+        startButton.addEventListener('click', () => {
+            startButton.style.display = 'none';
+            introText.style.display = 'none';
+            gameContainer.style.display = 'block';
+            loadNewQuestion();
+        });
+
+        function loadNewQuestion() {
+            fetch(QUESTION_URL)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('question').textContent = data.question;
+                    currentCorrectAnswer = data.correct_answer;
+                    currentQuestion = data.question;
+                    currentAnswerAudio = data.answer_audio;
+
+                    const questionAudio = document.getElementById('question-audio');
+                    questionAudio.src = data.question_audio;
+
+                    answerAudio.src = data.answer_audio;
+
+                    const optionsDiv = document.getElementById('options');
+                    optionsDiv.innerHTML = '';
+                    data.options.forEach(option => {
+                        const input = document.createElement('input');
+                        input.type = 'radio';
+                        input.name = 'answer';
+                        input.value = option;
+                        input.required = true;
+
+                        const label = document.createElement('label');
+                        label.appendChild(input);
+                        label.appendChild(document.createTextNode(' ' + option));
+                        optionsDiv.appendChild(label);
+                    });
+                    message.textContent = ''; // Clear previous message
+                })
+                .catch(error => console.error('Error loading question:', error));
+        }
+
+        document.getElementById('quiz-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const selectedAnswer = document.querySelector('input[name="answer"]:checked').value;
+            const radios = document.querySelectorAll('input[name="answer"]');
+
+            if (selectedAnswer === currentCorrectAnswer) {
+                message.textContent = 'Correct!';
+                message.style.color = 'green';
+                correctAudio.pause();
+                correctAudio.currentTime = 0;
+                answerAudio.pause();
+                answerAudio.currentTime = 0;
+
+                correctAudio.play();
+                correctAudio.onended = () => {
+                    answerAudio.play()
+                        .then(() => {
+                            answerAudio.onended = () => {
+                                setTimeout(() => {
+                                    loadNewQuestion();
+                                }, 500);
+                            };
+                        })
+                        .catch(error => console.error('Error playing answer audio:', error));
+                };
+            } else {
+                message.textContent = 'Wrong! Try again.';
+                message.style.color = 'red';
+                wrongAudio.pause();
+                wrongAudio.currentTime = 0;
+                wrongAudio.play()
+                    .then(() => {
+                        radios.forEach(radio => radio.checked = false);
+                    })
+                    .catch(error => console.error('Error playing wrong audio:', error));
+            }
+        });
+
+        document.getElementById('play-question').addEventListener('click', () => {
+            const audio = document.getElementById('question-audio');
+            audio.pause();
+            audio.currentTime = 0;
+            audio.play().catch(error => {
+                console.error('Error playing question audio:', error);
+            });
+        });
+
+        // No need for window.onload since the intro page handles the initial load
+    </script>
+</body>
+</html>
