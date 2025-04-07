@@ -170,6 +170,7 @@
                     currentAnswerAudio = data.answer_audio;
 
                     const questionAudio = document.getElementById('question-audio');
+                    console.log('Question audio URL:', data.question_audio); // Debug line
                     questionAudio.src = data.question_audio;
 
                     answerAudio.src = data.answer_audio;
