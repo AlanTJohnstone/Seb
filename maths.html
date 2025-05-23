@@ -1,0 +1,1762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seb’s Math Revision</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .landing-container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 600px;
+            margin: auto;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: auto;
+            display: none; /* Initially hidden */
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        h2 {
+            color: #555;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            font-weight: normal;
+        }
+        .question-area {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #e9ecef;
+        }
+        .question-text {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        .diagram-container {
+            width: 100%;
+            overflow: hidden; /* Prevent SVG overflow */
+        }
+        .diagram-container svg {
+            max-width: 100%;
+            max-height: 300px; /* Limit SVG height */
+            width: 100%;
+            height: auto;
+            display: block;
+            margin: 10px auto;
+            border: 1px solid #ccc;
+            object-fit: contain; /* Ensure SVG scales properly */
+        }
+        .answer-area {
+            margin-top: 15px;
+            padding: 10px;
+            border: 1px dashed #007bff;
+            border-radius: 5px;
+            background-color: #e7f3ff;
+            display: none; /* Hidden by default */
+        }
+        .buttons-area {
+            text-align: center;
+            margin-top: 20px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button#next-button {
+            background-color: #28a745;
+        }
+        button#next-button:hover {
+            background-color: #1e7e34;
+        }
+        button#play-button {
+            background-color: #ff9800;
+        }
+        button#play-button:hover {
+            background-color: #e68900;
+        }
+        button#play-answer-button {
+            background-color: #6f42c1;
+            display: none; /* Hidden by default */
+        }
+        button#play-answer-button:hover {
+            background-color: #5a32a3;
+        }
+    </style>
+</head>
+<body>
+    <div class="landing-container" id="landing-container">
+        <h1>Seb's Math Revision</h1>
+        <h2>Try hard to do the problems by yourself before looking at the answer to check you got it correct</h2>
+        <button id="startButton">Start</button>
+    </div>
+
+    <div class="container" id="main-container">
+        <h1>Seb’s Math Revision</h1>
+
+        <div class="question-area">
+            <div class="question-text" id="question-text">Loading question...</div>
+            <div class="diagram-container" id="diagram-container"></div>
+        </div>
+
+        <div class="answer-area" id="answer-area">
+            <!-- Model answer will be injected here -->
+        </div>
+
+        <div class="buttons-area">
+            <button id="answer-button">Answer</button>
+            <button id="play-button">Play Question</button>
+            <button id="play-answer-button">Play Answer</button>
+            <button id="next-button">Next Question</button>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+    // Place Value (10 questions)
+    {
+        questionText: "What is the value of the digit 7 in the number 374?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>To find the value of the digit 7 in 374, we look at its place. The number 374 is made of 3 hundreds, 7 tens, and 4 ones. The digit 7 is in the tens place, so its value is 7 × 10 = 70.</p>
+            <p><strong>Answer:</strong> 70</p>
+        `
+    ,
+questionNo: 0
+},
+    {
+        questionText: "Partition the number 826 into hundreds, tens, and ones.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>The number 826 can be partitioned as follows: 8 hundreds = 800, 2 tens = 20, 6 ones = 6. So, 826 = 800 + 20 + 6.</p>
+            <p><strong>Answer:</strong> 800 + 20 + 6</p>
+        `
+    ,
+questionNo: 1
+},
+    {
+        questionText: "Compare the numbers 456 and 465 using <, >, or =.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Both numbers have the same hundreds digit (4). Comparing the tens digits, 456 has 5 tens, and 465 has 6 tens. Since 5 < 6, we conclude 456 < 465.</p>
+            <p><strong>Answer:</strong> 456 < 465</p>
+        `
+    ,
+questionNo: 2
+},
+    {
+        questionText: "Count forward in 50s from 150 to 300.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Starting at 150, add 50 each time: 150 + 50 = 200, 200 + 50 = 250, 250 + 50 = 300.</p>
+            <p><strong>Answer:</strong> 150, 200, 250, 300</p>
+        `
+    ,
+questionNo: 3
+},
+    {
+        questionText: "What number is 100 more than 567?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>To find 100 more than 567, add 100: 567 + 100 = 667.</p>
+            <p><strong>Answer:</strong> 667</p>
+        `
+    ,
+questionNo: 4
+},
+    {
+        questionText: "Place 725 on a number line from 700 to 800.",
+        svgDiagram: `
+            <svg viewBox="0 0 300 50" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+                <line x1="20" y1="25" x2="280" y2="25" stroke="#000" stroke-width="2"/>
+                <line x1="20" y1="20" x2="20" y2="30" stroke="#000" stroke-width="2"/>
+                <line x1="150" y1="20" x2="150" y2="30" stroke="#000" stroke-width="2"/>
+                <line x1="280" y1="20" x2="280" y2="30" stroke="#000" stroke-width="2"/>
+                <circle cx="75" cy="25" r="5" fill="#27AE60"/>
+                <text x="15" y="45" font-family="Arial" font-size="12">700</text>
+                <text x="145" y="45" font-family="Arial" font-size="12">725</text>
+                <text x="275" y="45" font-family="Arial" font-size="12">800</text>
+            </svg>
+        `,
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>The number line goes from 700 to 800, a range of 100. Each 25 units is a quarter of the way. 725 is 25 more than 700, so it is one quarter of the way from 700 to 800, as shown on the number line.</p>
+            <p><strong>Answer:</strong> 725 is marked one quarter of the way between 700 and 800.</p>
+        `
+    ,
+questionNo: 5
+},
+    {
+        questionText: "What is the next number after 999?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>The number after 999 is 999 + 1 = 1000.</p>
+            <p><strong>Answer:</strong> 1000</p>
+        `
+    ,
+questionNo: 6
+},
+    {
+        questionText: "Order these numbers from smallest to largest: 342, 234, 423.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Compare the hundreds digits: 234 (2 hundreds), 342 (3 hundreds), 423 (4 hundreds). Since 2 < 3 < 4, the order is 234, 342, 423.</p>
+            <p><strong>Answer:</strong> 234, 342, 423</p>
+        `
+    ,
+questionNo: 7
+},
+    {
+        questionText: "What is 50 less than 400?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>To find 50 less than 400, subtract 50: 400 - 50 = 350.</p>
+            <p><strong>Answer:</strong> 350</p>
+        `
+    ,
+questionNo: 8
+},
+    {
+        questionText: "Write 543 in expanded form.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>The number 543 has 5 hundreds, 4 tens, and 3 ones. In expanded form, 543 = 500 + 40 + 3.</p>
+            <p><strong>Answer:</strong> 500 + 40 + 3</p>
+        `
+    ,
+questionNo: 9
+},
+    // Addition & Subtraction (10 questions)
+    {
+        questionText: "What is 245 + 138?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Use column addition: <br>
+            245 + 138 = <br>
+            Ones: 5 + 8 = 13 (write 3, carry 1). <br>
+            Tens: 4 + 3 + 1 = 8. <br>
+            Hundreds: 2 + 1 = 3. <br>
+            So, 245 + 138 = 383.</p>
+            <p><strong>Answer:</strong> 383</p>
+        `
+    ,
+questionNo: 10
+},
+    {
+        questionText: "Estimate the answer to 392 + 217.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Round 392 to 400 and 217 to 200. Then, 400 + 200 = 600.</p>
+            <p><strong>Answer:</strong> Approximately 600</p>
+        `
+    ,
+questionNo: 11
+},
+    {
+        questionText: "What is 456 - 123?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Use column subtraction: <br>
+            456 - 123 = <br>
+            Ones: 6 - 3 = 3. <br>
+            Tens: 5 - 2 = 3. <br>
+            Hundreds: 4 - 1 = 3. <br>
+            So, 456 - 123 = 333.</p>
+            <p><strong>Answer:</strong> 333</p>
+        `
+    ,
+questionNo: 12
+},
+    {
+        questionText: "Use inverse operations to check if 567 - 234 = 333 is correct.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>The inverse of subtraction is addition. If 567 - 234 = 333, then 333 + 234 should equal 567. <br>
+            333 + 234 = <br>
+            Ones: 3 + 4 = 7. <br>
+            Tens: 3 + 3 = 6. <br>
+            Hundreds: 3 + 2 = 5. <br>
+            So, 333 + 234 = 567, which confirms the subtraction is correct.</p>
+            <p><strong>Answer:</strong> The calculation is correct.</p>
+        `
+    ,
+questionNo: 13
+},
+    {
+        questionText: "What number must be added to 189 to make 300?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Subtract 189 from 300: 300 - 189 = <br>
+            Ones: 0 - 9 requires borrowing. Borrow 1 ten, so 10 - 9 = 1. <br>
+            Tens: 9 - 8 = 1 (after borrowing 1 from hundreds). <br>
+            Hundreds: 2 - 1 = 1. <br>
+            So, 300 - 189 = 111.</p>
+            <p><strong>Answer:</strong> 111</p>
+        `
+    ,
+questionNo: 14
+},
+    {
+        questionText: "Add 276 and 149 mentally using number bonds.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Break 149 into 100, 40, 9. <br>
+            276 + 100 = 376. <br>
+            376 + 40 = 416. <br>
+            416 + 9 = 425 (use number bond: 6 + 9 = 15, so 416 + 9 = 425).</p>
+            <p><strong>Answer:</strong> 425</p>
+        `
+    ,
+questionNo: 15
+},
+    {
+        questionText: "Subtract 78 from 200.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Use column subtraction: <br>
+            200 - 78 = <br>
+            Ones: 0 - 8 requires borrowing. Borrow 1 ten, so 10 - 8 = 2. <br>
+            Tens: 9 - 7 = 2 (after borrowing 1 from hundreds). <br>
+            Hundreds: 1 - 0 = 1. <br>
+            So, 200 - 78 = 122.</p>
+            <p><strong>Answer:</strong> 122</p>
+        `
+    ,
+questionNo: 16
+},
+    {
+        questionText: "What is 345 + 178?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Use column addition: <br>
+            345 + 178 = <br>
+            Ones: 5 + 8 = 13 (write 3, carry 1). <br>
+            Tens: 4 + 7 + 1 = 12 (write 2, carry 1). <br>
+            Hundreds: 3 + 1 + 1 = 5. <br>
+            So, 345 + 178 = 523.</p>
+            <p><strong>Answer:</strong> 523</p>
+        `
+    ,
+questionNo: 17
+},
+    {
+        questionText: "Estimate the answer to 487 - 192.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Round 487 to 500 and 192 to 200. Then, 500 - 200 = 300.</p>
+            <p><strong>Answer:</strong> Approximately 300</p>
+        `
+    ,
+questionNo: 18
+},
+    {
+        questionText: "If 234 + ? = 500, what is the missing number?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Subtract 234 from 500: 500 - 234 = <br>
+            Ones: 0 - 4 requires borrowing. Borrow 1 ten, so 10 - 4 = 6. <br>
+            Tens: 9 - 3 = 6. <br>
+            Hundreds: 4 - 2 = 2. <br>
+            So, 500 - 234 = 266.</p>
+            <p><strong>Answer:</strong> 266</p>
+        `
+    ,
+questionNo: 19
+},
+    // Multiplication & Division A (10 questions)
+    {
+        questionText: "What is 4 × 5?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Using the 4 times table: 4 × 5 = 20.</p>
+            <p><strong>Answer:</strong> 20</p>
+        `
+    ,
+questionNo: 20
+},
+    {
+        questionText: "Show 3 × 4 using an array.",
+        svgDiagram: `
+            <svg viewBox="0 0 100 80" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+                <rect x="20" y="20" width="15" height="15" fill="#27AE60"/>
+                <rect x="35" y="20" width="15" height="15" fill="#27AE60"/>
+                <rect x="50" y="20" width="15" height="15" fill="#27AE60"/>
+                <rect x="65" y="20" width="15" height="15" fill="#27AE60"/>
+                <rect x="20" y="35" width="15" height="15" fill="#27AE60"/>
+                <rect x="35" y="35" width="15" height="15" fill="#27AE60"/>
+                <rect x="50" y="35" width="15" height="15" fill="#27AE60"/>
+                <rect x="65" y="35" width="15" height="15" fill="#27AE60"/>
+                <rect x="20" y="50" width="15" height="15" fill="#27AE60"/>
+                <rect x="35" y="50" width="15" height="15" fill="#27AE60"/>
+                <rect x="50" y="50" width="15" height="15" fill="#27AE60"/>
+                <rect x="65" y="50" width="15" height="15" fill="#27AE60"/>
+                <text x="10" y="15" font-family="Arial" font-size="12">3 rows</text>
+                <text x="85" y="40" font-family="Arial" font-size="12">4 columns</text>
+            </svg>
+        `,
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>The array shows 3 rows of 4 dots. Counting all dots: 3 × 4 = 12.</p>
+            <p><strong>Answer:</strong> 12</p>
+        `
+    ,
+questionNo: 21
+},
+    {
+        questionText: "What is 24 ÷ 3?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Using the 3 times table: 3 × 8 = 24, so 24 ÷ 3 = 8.</p>
+            <p><strong>Answer:</strong> 8</p>
+        `
+    ,
+questionNo: 22
+},
+    {
+        questionText: "How many groups of 5 are in 20?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Divide 20 by 5: 20 ÷ 5 = 4 (since 5 × 4 = 20).</p>
+            <p><strong>Answer:</strong> 4 groups</p>
+        `
+    ,
+questionNo: 23
+},
+    {
+        questionText: "What is 8 × 2?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Using the 8 times table: 8 × 2 = 16.</p>
+            <p><strong>Answer:</strong> 16</p>
+        `
+    ,
+questionNo: 24
+},
+    {
+        questionText: "If 10 × 4 = 40, what is 40 ÷ 4?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Since 10 × 4 = 40, dividing 40 by 4 gives 40 ÷ 4 = 10.</p>
+            <p><strong>Answer:</strong> 10</p>
+        `
+    ,
+questionNo: 25
+},
+    {
+        questionText: "Show 2 × 6 as equal groups.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>2 groups of 6 can be represented as 6 + 6 = 12. Alternatively, using the 2 times table: 2 × 6 = 12.</p>
+            <p><strong>Answer:</strong> 12</p>
+        `
+    ,
+questionNo: 26
+},
+    {
+        questionText: "What is 30 ÷ 5?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Using the 5 times table: 5 × 6 = 30, so 30 ÷ 5 = 6.</p>
+            <p><strong>Answer:</strong> 6</p>
+        `
+    ,
+questionNo: 27
+},
+    {
+        questionText: "What is 3 × 8?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Using the 3 times table: 3 × 8 = 24.</p>
+            <p><strong>Answer:</strong> 24</p>
+        `
+    ,
+questionNo: 28
+},
+    {
+        questionText: "How many 4s are in 16?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Divide 16 by 4: 16 ÷ 4 = 4 (since 4 × 4 = 16).</p>
+            <p><strong>Answer:</strong> 4</p>
+        `
+    ,
+questionNo: 29
+},
+    // Multiplication & Division B (10 questions)
+    {
+        questionText: "What is 30 × 2?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Think of 30 as 3 tens. 3 × 2 = 6, so 30 × 2 = 6 tens = 60.</p>
+            <p><strong>Answer:</strong> 60</p>
+        `
+    ,
+questionNo: 30
+},
+    {
+        questionText: "What is 48 ÷ 4?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Use short division: <br>
+            4 into 4 (tens): 4 ÷ 4 = 1 ten. <br>
+            4 into 8 (ones): 8 ÷ 4 = 2. <br>
+            So, 48 ÷ 4 = 12.</p>
+            <p><strong>Answer:</strong> 12</p>
+        `
+    ,
+questionNo: 31
+},
+    {
+        questionText: "Multiply 23 by 3.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Use column multiplication: <br>
+            23 × 3 = <br>
+            Ones: 3 × 3 = 9. <br>
+            Tens: 2 × 3 = 6. <br>
+            So, 23 × 3 = 69.</p>
+            <p><strong>Answer:</strong> 69</p>
+        `
+    ,
+questionNo: 32
+},
+    {
+        questionText: "What is 56 ÷ 2?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Use short division: <br>
+            2 into 5 (tens): 5 ÷ 2 = 2 tens, remainder 1. <br>
+            Carry 1 ten to make 10 + 6 = 16 ones. <br>
+            16 ÷ 2 = 8. <br>
+            So, 56 ÷ 2 = 28.</p>
+            <p><strong>Answer:</strong> 28</p>
+        `
+    ,
+questionNo: 33
+},
+    {
+        questionText: "If 20 × 3 = 60, what is 60 ÷ 3?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Since 20 × 3 = 60, dividing 60 by 3 gives 60 ÷ 3 = 20.</p>
+            <p><strong>Answer:</strong> 20</p>
+        `
+    ,
+questionNo: 34
+},
+    {
+        questionText: "What is 40 × 5?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Think of 40 as 4 tens. 4 × 5 = 20, so 40 × 5 = 20 tens = 200.</p>
+            <p><strong>Answer:</strong> 200</p>
+        `
+    ,
+questionNo: 35
+},
+    {
+        questionText: "Divide 45 by 3.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Use short division: <br>
+            3 into 4 (tens): 4 ÷ 3 = 1 ten, remainder 1. <br>
+            Carry 1 ten to make 10 + 5 = 15 ones. <br>
+            15 ÷ 3 = 5. <br>
+            So, 45 ÷ 3 = 15.</p>
+            <p><strong>Answer:</strong> 15</p>
+        `
+    ,
+questionNo: 36
+},
+    {
+        questionText: "What is the remainder when 25 is divided by 4?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Divide 25 by 4: 4 × 6 = 24, so 25 ÷ 4 = 6 remainder 1 (since 25 - 24 = 1).</p>
+            <p><strong>Answer:</strong> Remainder 1</p>
+        `
+    ,
+questionNo: 37
+},
+    {
+        questionText: "If a box holds 4 apples, how many boxes are needed for 28 apples?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Divide 28 by 4: 28 ÷ 4 = 7. So, 7 boxes are needed.</p>
+            <p><strong>Answer:</strong> 7 boxes</p>
+        `
+    ,
+questionNo: 38
+},
+    {
+        questionText: "Multiply 34 by 2.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Use column multiplication: <br>
+            34 × 2 = <br>
+            Ones: 4 × 2 = 8. <br>
+            Tens: 3 × 2 = 6. <br>
+            So, 34 × 2 = 68.</p>
+            <p><strong>Answer:</strong> 68</p>
+        `
+    ,
+questionNo: 39
+},
+    // Length & Perimeter (10 questions)
+    {
+        questionText: "Convert 2 metres to centimetres.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>1 metre = 100 centimetres, so 2 metres = 2 × 100 = 200 centimetres.</p>
+            <p><strong>Answer:</strong> 200 cm</p>
+        `
+    ,
+questionNo: 40
+},
+    {
+        questionText: "What is the perimeter of a rectangle with length 5 cm and width 3 cm?",
+        svgDiagram: `
+            <svg viewBox="0 0 200 150" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+                <rect x="50" y="50" width="100" height="60" fill="none" stroke="#000" stroke-width="2"/>
+                <text x="90" y="45" font-family="Arial" font-size="12">5 cm</text>
+                <text x="155" y="80" font-family="Arial" font-size="12">3 cm</text>
+            </svg>
+        `,
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Perimeter of a rectangle = 2 × (length + width). <br>
+            Length = 5 cm, width = 3 cm. <br>
+            Perimeter = 2 × (5 + 3) = 2 × 8 = 16 cm.</p>
+            <p><strong>Answer:</strong> 16 cm</p>
+        `
+    ,
+questionNo: 41
+},
+    {
+        questionText: "Convert 150 cm to metres and centimetres.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>1 metre = 100 cm. Divide 150 by 100: 150 ÷ 100 = 1 metre with 50 cm remaining. <br>
+            So, 150 cm = 1 m 50 cm.</p>
+            <p><strong>Answer:</strong> 1 m 50 cm</p>
+        `
+    ,
+questionNo: 42
+},
+    {
+        questionText: "Add 2 m 30 cm and 1 m 40 cm.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert to centimetres: 2 m 30 cm = 230 cm, 1 m 40 cm = 140 cm. <br>
+            230 + 140 = 370 cm. <br>
+            Convert back: 370 ÷ 100 = 3 m 70 cm.</p>
+            <p><strong>Answer:</strong> 3 m 70 cm</p>
+        `
+    ,
+questionNo: 43
+},
+    {
+        questionText: "What is 1 m - 45 cm in centimetres?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert 1 m to 100 cm. Then, 100 cm - 45 cm = 55 cm.</p>
+            <p><strong>Answer:</strong> 55 cm</p>
+        `
+    ,
+questionNo: 44
+},
+    {
+        questionText: "Compare 2 m 10 cm and 220 cm using <, >, or =.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert 2 m 10 cm to centimetres: 2 × 100 + 10 = 210 cm. <br>
+            Compare: 210 cm < 220 cm.</p>
+            <p><strong>Answer:</strong> 2 m 10 cm < 220 cm</p>
+        `
+    ,
+questionNo: 45
+},
+    {
+        questionText: "What is the perimeter of a square with side length 4 cm?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Perimeter of a square = 4 × side length. <br>
+            4 × 4 cm = 16 cm.</p>
+            <p><strong>Answer:</strong> 16 cm</p>
+        `
+    ,
+questionNo: 46
+},
+    {
+        questionText: "Convert 345 mm to centimetres.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>1 cm = 10 mm, so 345 mm ÷ 10 = 34.5 cm.</p>
+            <p><strong>Answer:</strong> 34.5 cm</p>
+        `
+    ,
+questionNo: 47
+},
+    {
+        questionText: "What is 3 m 20 cm + 80 cm?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert 3 m 20 cm to centimetres: 3 × 100 + 20 = 320 cm. <br>
+            320 cm + 80 cm = 400 cm. <br>
+            Convert back: 400 ÷ 100 = 4 m.</p>
+            <p><strong>Answer:</strong> 4 m</p>
+        `
+    ,
+questionNo: 48
+},
+    {
+        questionText: "What is the perimeter of a triangle with sides 6 cm, 8 cm, and 10 cm?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Perimeter of a triangle = sum of all sides. <br>
+            6 cm + 8 cm + 10 cm = 24 cm.</p>
+            <p><strong>Answer:</strong> 24 cm</p>
+        `
+    ,
+questionNo: 49
+},
+    // Fractions A (10 questions)
+    {
+        questionText: "What is the numerator of the fraction 3/5?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>In the fraction 3/5, the numerator is the top number, which is 3.</p>
+            <p><strong>Answer:</strong> 3</p>
+        `
+    ,
+questionNo: 50
+},
+    {
+        questionText: "Show 2/3 on a number line from 0 to 1.",
+        svgDiagram: `
+            <svg viewBox="0 0 300 50" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+                <line x1="20" y1="25" x2="280" y2="25" stroke="#000" stroke-width="2"/>
+                <line x1="20" y1="20" x2="20" y2="30" stroke="#000" stroke-width="2"/>
+                <line x1="100" y1="20" x2="100" y2="30" stroke="#000" stroke-width="2"/>
+                <line x1="180" y1="20" x2="180" y2="30" stroke="#000" stroke-width="2"/>
+                <line x1="260" y1="20" x2="260" y2="30" stroke="#000" stroke-width="2"/>
+                <circle cx="180" cy="25" r="5" fill="#27AE60"/>
+                <text x="15" y="45" font-family="Arial" font-size="12">0</text>
+                <text x="95" y="45" font-family="Arial" font-size="12">1/3</text>
+                <text x="175" y="45" font-family="Arial" font-size="12">2/3</text>
+                <text x="255" y="45" font-family="Arial" font-size="12">1</text>
+            </svg>
+        `,
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Divide the number line from 0 to 1 into 3 equal parts. Each part is 1/3. The point at 2/3 is two parts from 0, as shown.</p>
+            <p><strong>Answer:</strong> 2/3 is two-thirds of the way from 0 to 1.</p>
+        `
+    ,
+questionNo: 51
+},
+    {
+        questionText: "What is 1/4 of 12?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>To find 1/4 of 12, divide 12 by 4: 12 ÷ 4 = 3.</p>
+            <p><strong>Answer:</strong> 3</p>
+        `
+    ,
+questionNo: 52
+},
+    {
+        questionText: "Compare 1/3 and 1/4 using <, >, or =.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Compare by finding a common denominator. The least common multiple of 3 and 4 is 12. <br>
+            1/3 = 4/12, 1/4 = 3/12. Since 4/12 > 3/12, 1/3 > 1/4.</p>
+            <p><strong>Answer:</strong> 1/3 > 1/4</p>
+        `
+    ,
+questionNo: 53
+},
+    {
+        questionText: "What is an equivalent fraction to 2/5?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Multiply the numerator and denominator of 2/5 by 2: (2 × 2)/(5 × 2) = 4/10.</p>
+            <p><strong>Answer:</strong> 4/10</p>
+        `
+    ,
+questionNo: 54
+},
+    {
+        questionText: "Count in quarters from 0 to 1.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Starting at 0, add 1/4 each time: 0, 1/4, 2/4, 3/4, 4/4 (or 1).</p>
+            <p><strong>Answer:</strong> 0, 1/4, 2/4, 3/4, 1</p>
+        `
+    ,
+questionNo: 55
+},
+    {
+        questionText: "What is the denominator of 3/8?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>In the fraction 3/8, the denominator is the bottom number, which is 8.</p>
+            <p><strong>Answer:</strong> 8</p>
+        `
+    ,
+questionNo: 56
+},
+    {
+        questionText: "Show 3/4 as a bar model.",
+        svgDiagram: `
+            <svg viewBox="0 0 200 50" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+                <rect x="20" y="20" width="150" height="20" fill="none" stroke="#000" stroke-width="2"/>
+                <line x1="70" y1="20" x2="70" y2="40" stroke="#000" stroke-width="2"/>
+                <line x1="120" y1="20" x2="120" y2="40" stroke="#000" stroke-width="2"/>
+                <rect x="20" y="20" width="112.5" height="20" fill="#27AE60"/>
+                <text x="80" y="15" font-family="Arial" font-size="12">3/4</text>
+            </svg>
+        `,
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>The bar is divided into 4 equal parts, and 3 parts are shaded to show 3/4.</p>
+            <p><strong>Answer:</strong> 3/4 is three out of four equal parts.</p>
+        `
+    ,
+questionNo: 57
+},
+    {
+        questionText: "What is 2/3 of 9?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>To find 2/3 of 9, first find 1/3: 9 ÷ 3 = 3. Then, 2/3 = 2 × 3 = 6.</p>
+            <p><strong>Answer:</strong> 6</p>
+        `
+    ,
+questionNo: 58
+},
+    {
+        questionText: "Order the fractions 1/2, 1/3, 1/4 from largest to smallest.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Compare using a common denominator. The least common multiple of 2, 3, 4 is 12. <br>
+            1/2 = 6/12, 1/3 = 4/12, 1/4 = 3/12. <br>
+            Since 6/12 > 4/12 > 3/12, the order is 1/2, 1/3, 1/4.</p>
+            <p><strong>Answer:</strong> 1/2, 1/3, 1/4</p>
+        `
+    ,
+questionNo: 59
+},
+    // Mass & Capacity (10 questions)
+    {
+        questionText: "Convert 2 kg to grams.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>1 kg = 1000 g, so 2 kg = 2 × 1000 = 2000 g.</p>
+            <p><strong>Answer:</strong> 2000 g</p>
+        `
+    ,
+questionNo: 60
+},
+    {
+        questionText: "Add 1 kg 500 g and 750 g.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert 1 kg 500 g to grams: 1 × 1000 + 500 = 1500 g. <br>
+            1500 g + 750 g = 2250 g. <br>
+            Convert back: 2250 ÷ 1000 = 2 kg 250 g.</p>
+            <p><strong>Answer:</strong> 2 kg 250 g</p>
+        `
+    ,
+questionNo: 61
+},
+    {
+        questionText: "What is 3 L - 750 mL in millilitres?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert 3 L to millilitres: 3 × 1000 = 3000 mL. <br>
+            3000 mL - 750 mL = 2250 mL.</p>
+            <p><strong>Answer:</strong> 2250 mL</p>
+        `
+    ,
+questionNo: 62
+},
+    {
+        questionText: "Compare 1 kg 200 g and 1300 g using <, >, or =.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert 1 kg 200 g to grams: 1 × 1000 + 200 = 1200 g. <br>
+            Compare: 1200 g < 1300 g.</p>
+            <p><strong>Answer:</strong> 1 kg 200 g < 1300 g</p>
+        `
+    ,
+questionNo: 63
+},
+    {
+        questionText: "Convert 2500 mL to litres.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>1 L = 1000 mL, so 2500 mL ÷ 1000 = 2.5 L.</p>
+            <p><strong>Answer:</strong> 2.5 L</p>
+        `
+    ,
+questionNo: 64
+},
+    {
+        questionText: "What is 2 kg 300 g - 1 kg 400 g?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert to grams: 2 kg 300 g = 2300 g, 1 kg 400 g = 1400 g. <br>
+            2300 g - 1400 g = 900 g.</p>
+            <p><strong>Answer:</strong> 900 g</p>
+        `
+    ,
+questionNo: 65
+},
+    {
+        questionText: "How many 250 mL cups can be filled from 1 L?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>1 L = 1000 mL. Divide 1000 by 250: 1000 ÷ 250 = 4.</p>
+            <p><strong>Answer:</strong> 4 cups</p>
+        `
+    ,
+questionNo: 66
+},
+    {
+        questionText: "Add 1 L 200 mL and 800 mL.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert 1 L 200 mL to millilitres: 1 × 1000 + 200 = 1200 mL. <br>
+            1200 mL + 800 mL = 2000 mL = 2 L.</p>
+            <p><strong>Answer:</strong> 2 L</p>
+        `
+    ,
+questionNo: 67
+},
+    {
+        questionText: "What is 4 kg - 2500 g in grams?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert 4 kg to grams: 4 × 1000 = 4000 g. <br>
+            4000 g - 2500 g = 1500 g.</p>
+            <p><strong>Answer:</strong> 1500 g</p>
+        `
+    ,
+questionNo: 68
+},
+    {
+        questionText: "Compare 2 L 500 mL and 3 L using <, >, or =.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert 2 L 500 mL to millilitres: 2 × 1000 + 500 = 2500 mL. <br>
+            Convert 3 L to millilitres: 3 × 1000 = 3000 mL. <br>
+            Compare: 2500 mL < 3000 mL.</p>
+            <p><strong>Answer:</strong> 2 L 500 mL < 3 L</p>
+        `
+    ,
+questionNo: 69
+},
+    // Fractions B (10 questions)
+    {
+        questionText: "Add 1/4 and 2/4.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Since the denominators are the same, add the numerators: 1 + 2 = 3. <br>
+            So, 1/4 + 2/4 = 3/4.</p>
+            <p><strong>Answer:</strong> 3/4</p>
+        `
+    ,
+questionNo: 70
+},
+    {
+        questionText: "Subtract 3/5 - 1/5.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Since the denominators are the same, subtract the numerators: 3 - 1 = 2. <br>
+            So, 3/5 - 1/5 = 2/5.</p>
+            <p><strong>Answer:</strong> 2/5</p>
+        `
+    ,
+questionNo: 71
+},
+    {
+        questionText: "What is 3/4 of 12?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Find 1/4 of 12: 12 ÷ 4 = 3. Then, 3/4 = 3 × 3 = 9.</p>
+            <p><strong>Answer:</strong> 9</p>
+        `
+    ,
+questionNo: 72
+},
+    {
+        questionText: "Partition 1 whole into 3 equal parts.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Divide 1 by 3: 1 ÷ 3 = 1/3. So, 1 whole = 1/3 + 1/3 + 1/3.</p>
+            <p><strong>Answer:</strong> 1/3, 1/3, 1/3</p>
+        `
+    ,
+questionNo: 73
+},
+    {
+        questionText: "Add 2/3 and 1/3.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Since the denominators are the same, add the numerators: 2 + 1 = 3. <br>
+            So, 2/3 + 1/3 = 3/3 = 1.</p>
+            <p><strong>Answer:</strong> 1</p>
+        `
+    ,
+questionNo: 74
+},
+    {
+        questionText: "What is 2/5 of 10?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Find 1/5 of 10: 10 ÷ 5 = 2. Then, 2/5 = 2 × 2 = 4.</p>
+            <p><strong>Answer:</strong> 4</p>
+        `
+    ,
+questionNo: 75
+},
+    {
+        questionText: "Subtract 4/6 - 2/6.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Since the denominators are the same, subtract the numerators: 4 - 2 = 2. <br>
+            So, 4/6 - 2/6 = 2/6 = 1/3 (simplified).</p>
+            <p><strong>Answer:</strong> 1/3</p>
+        `
+    ,
+questionNo: 76
+},
+    {
+        questionText: "What is 1/2 of 16?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Find 1/2 of 16: 16 ÷ 2 = 8.</p>
+            <p><strong>Answer:</strong> 8</p>
+        `
+    ,
+questionNo: 77
+},
+    {
+        questionText: "Add 1/8 and 3/8.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Since the denominators are the same, add the numerators: 1 + 3 = 4. <br>
+            So, 1/8 + 3/8 = 4/8 = 1/2 (simplified).</p>
+            <p><strong>Answer:</strong> 1/2</p>
+        `
+    ,
+questionNo: 78
+},
+    {
+        questionText: "What is 3/5 of 15?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Find 1/5 of 15: 15 ÷ 5 = 3. Then, 3/5 = 3 × 3 = 9.</p>
+            <p><strong>Answer:</strong> 9</p>
+        `
+    ,
+questionNo: 79
+},
+    // Money (10 questions)
+    {
+        questionText: "Convert £2.50 to pence.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>1 pound = 100 pence, so £2.50 = 2 × 100 + 50 = 250 pence.</p>
+            <p><strong>Answer:</strong> 250p</p>
+        `
+    ,
+questionNo: 80
+},
+    {
+        questionText: "Add £3.20 and £1.80.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert to pence: £3.20 = 320p, £1.80 = 180p. <br>
+            320p + 180p = 500p = £5.00.</p>
+            <p><strong>Answer:</strong> £5.00</p>
+        `
+    ,
+questionNo: 81
+},
+    {
+        questionText: "What is £5.00 - £2.75?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert to pence: £5.00 = 500p, £2.75 = 275p. <br>
+            500p - 275p = 225p = £2.25.</p>
+            <p><strong>Answer:</strong> £2.25</p>
+        `
+    ,
+questionNo: 82
+},
+    {
+        questionText: "How much change from £10.00 for a £7.50 item?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert to pence: £10.00 = 1000p, £7.50 = 750p. <br>
+            1000p - 750p = 250p = £2.50.</p>
+            <p><strong>Answer:</strong> £2.50</p>
+        `
+    ,
+questionNo: 83
+},
+    {
+        questionText: "Convert 325p to pounds and pence.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>325p ÷ 100 = £3 with 25p remaining. <br>
+            So, 325p = £3.25.</p>
+            <p><strong>Answer:</strong> £3.25</p>
+        `
+    ,
+questionNo: 84
+},
+    {
+        questionText: "Add £2.45 and 75p.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert to pence: £2.45 = 245p, 75p = 75p. <br>
+            245p + 75p = 320p = £3.20.</p>
+            <p><strong>Answer:</strong> £3.20</p>
+        `
+    ,
+questionNo: 85
+},
+    {
+        questionText: "What is £4.00 - £1.25?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert to pence: £4.00 = 400p, £1.25 = 125p. <br>
+            400p - 125p = 275p = £2.75.</p>
+            <p><strong>Answer:</strong> £2.75</p>
+        `
+    ,
+questionNo: 86
+},
+    {
+        questionText: "How much change from £5.00 for a £3.80 item?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert to pence: £5.00 = 500p, £3.80 = 380p. <br>
+            500p - 380p = 120p = £1.20.</p>
+            <p><strong>Answer:</strong> £1.20</p>
+        `
+    ,
+questionNo: 87
+},
+    {
+        questionText: "Convert £1.05 to pence.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>£1.05 = 1 × 100 + 5 = 105 pence.</p>
+            <p><strong>Answer:</strong> 105p</p>
+        `
+    ,
+questionNo: 88
+},
+    {
+        questionText: "Add £1.50 and £2.25.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Convert to pence: £1.50 = 150p, £2.25 = 225p. <br>
+            150p + 225p = 375p = £3.75.</p>
+            <p><strong>Answer:</strong> £3.75</p>
+        `
+    ,
+questionNo: 89
+},
+    // Time (10 questions)
+    {
+        questionText: "What is the Roman numeral for 7?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>The Roman numeral for 7 is VII (5 + 1 + 1).</p>
+            <p><strong>Answer:</strong> VII</p>
+        `
+    ,
+questionNo: 90
+},
+    {
+        questionText: "What time is 3:45 on a digital clock in the afternoon?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>In the afternoon, 3:45 is written as 15:45 in 24-hour format or 3:45 PM in 12-hour format.</p>
+            <p><strong>Answer:</strong> 3:45 PM</p>
+        `
+    ,
+questionNo: 91
+},
+    {
+        questionText: "How many minutes are in 2 hours?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>1 hour = 60 minutes, so 2 hours = 2 × 60 = 120 minutes.</p>
+            <p><strong>Answer:</strong> 120 minutes</p>
+        `
+    ,
+questionNo: 92
+},
+    {
+        questionText: "What time is 30 minutes after 2:15 PM?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Add 30 minutes to 2:15 PM: 15 + 30 = 45 minutes. <br>
+            So, the time is 2:45 PM.</p>
+            <p><strong>Answer:</strong> 2:45 PM</p>
+        `
+    ,
+questionNo: 93
+},
+    {
+        questionText: "How many days are in 3 weeks?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>1 week = 7 days, so 3 weeks = 3 × 7 = 21 days.</p>
+            <p><strong>Answer:</strong> 21 days</p>
+        `
+    ,
+questionNo: 94
+},
+    {
+        questionText: "What is the Roman numeral for 12?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>The Roman numeral for 12 is XII (10 + 1 + 1).</p>
+            <p><strong>Answer:</strong> XII</p>
+        `
+    ,
+questionNo: 95
+},
+    {
+        questionText: "What time is 20 minutes before 10:00 AM?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Subtract 20 minutes from 10:00 AM: 10:00 - 20 = 9:40 AM.</p>
+            <p><strong>Answer:</strong> 9:40 AM</p>
+        `
+    ,
+questionNo: 96
+},
+    {
+        questionText: "How many hours are between 9:00 AM and 2:00 PM?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>From 9:00 AM to 12:00 PM is 3 hours. From 12:00 PM to 2:00 PM is 2 hours. <br>
+            Total: 3 + 2 = 5 hours.</p>
+            <p><strong>Answer:</strong> 5 hours</p>
+        `
+    ,
+questionNo: 97
+},
+    {
+        questionText: "Convert 90 minutes to hours and minutes.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>1 hour = 60 minutes, so 90 ÷ 60 = 1 hour with 30 minutes remaining. <br>
+            So, 90 minutes = 1 hour 30 minutes.</p>
+            <p><strong>Answer:</strong> 1 hour 30 minutes</p>
+        `
+    ,
+questionNo: 98
+},
+    {
+        questionText: "What time is 1 hour 45 minutes after 11:30 AM?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Add 1 hour to 11:30 AM: 11:30 AM + 1 hour = 12:30 PM. <br>
+            Add 45 minutes: 12:30 PM + 45 minutes = 1:15 PM.</p>
+            <p><strong>Answer:</strong> 1:15 PM</p>
+        `
+    ,
+questionNo: 99
+},
+    // Shape (10 questions)
+    {
+        questionText: "How many right angles does a rectangle have?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>A rectangle has four right angles (90° each).</p>
+            <p><strong>Answer:</strong> 4</p>
+        `
+    ,
+questionNo: 100
+},
+    {
+        questionText: "Identify the shape with 3 sides and 3 angles.",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>A shape with 3 sides and 3 angles is a triangle.</p>
+            <p><strong>Answer:</strong> Triangle</p>
+        `
+    ,
+questionNo: 101
+},
+    {
+        questionText: "Does a square have parallel sides?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>A square has two pairs of parallel sides (opposite sides are parallel).</p>
+            <p><strong>Answer:</strong> Yes</p>
+        `
+    ,
+questionNo: 102
+},
+    {
+        questionText: "How many faces does a cube have?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>A cube is a 3D shape with 6 square faces of equal size.</p>
+            <p><strong>Answer:</strong> 6</p>
+        `
+    ,
+questionNo: 103
+},
+    {
+        questionText: "Compare the angles in a triangle: are they all acute?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Not all triangles have only acute angles (less than 90°). Some triangles may have right angles (90°) or obtuse angles (greater than 90°).</p>
+            <p><strong>Answer:</strong> Not necessarily</p>
+        `
+    ,
+questionNo: 104
+},
+    {
+        questionText: "Draw a square with side length 4 cm.",
+        svgDiagram: `
+            <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+                <rect x="30" y="30" width="40" height="40" fill="none" stroke="#000" stroke-width="2"/>
+                <text x="45" y="25" font-family="Arial" font-size="12">4 cm</text>
+            </svg>
+        `,
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>A square with side length 4 cm has four equal sides and four right angles, as shown in the diagram.</p>
+            <p><strong>Answer:</strong> A square with 4 cm sides</p>
+        `
+    ,
+questionNo: 105
+},
+    {
+        questionText: "Does a rectangle have perpendicular lines?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>A rectangle has four right angles, so its adjacent sides are perpendicular (meet at 90°).</p>
+            <p><strong>Answer:</strong> Yes</p>
+        `
+    ,
+questionNo: 106
+},
+    {
+        questionText: "How many edges does a cuboid have?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>A cuboid has 12 edges.</p>
+            <p><strong>Answer:</strong> 12</p>
+        `
+    ,
+questionNo: 107
+},
+    {
+        questionText: "What is a 2D shape with 5 sides called?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>A 2D shape with 5 sides is a pentagon.</p>
+            <p><strong>Answer:</strong> Pentagon</p>
+        `
+    ,
+questionNo: 108
+},
+    {
+        questionText: "How many vertices does a triangle have?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>A triangle has 3 vertices.</p>
+            <p><strong>Answer:</strong> 3</p>
+        `
+    ,
+questionNo: 109
+},
+    // Statistics (10 questions)
+    {
+        questionText: "How many children chose apples in the pictogram where each apple symbol represents 2 children, and there are 3 apple symbols?",
+        svgDiagram: `
+            <svg viewBox="0 0 200 80" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="40" r="10" fill="#27AE60"/>
+                <circle cx="70" cy="40" r="10" fill="#27AE60"/>
+                <circle cx="90" cy="40" r="10" fill="#27AE60"/>
+                <text x="20" y="20" font-family="Arial" font-size="12">Apples</text>
+                <text x="120" y="45" font-family="Arial" font-size="12">= 2 children</text>
+            </svg>
+        `,
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Each apple symbol represents 2 children. There are 3 apple symbols, so 3 × 2 = 6 children.</p>
+            <p><strong>Answer:</strong> 6 children</p>
+        `
+    ,
+questionNo: 110
+},
+    {
+        questionText: "In a bar chart, the bar for cats is 5 cm tall, and each cm represents 2 votes. How many votes for cats?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Each cm represents 2 votes, so 5 cm = 5 × 2 = 10 votes.</p>
+            <p><strong>Answer:</strong> 10 votes</p>
+        `
+    ,
+questionNo: 111
+},
+    {
+        questionText: "What is the difference between 8 votes for dogs and 5 votes for cats in a bar chart?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Subtract: 8 - 5 = 3.</p>
+            <p><strong>Answer:</strong> 3 votes</p>
+        `
+    ,
+questionNo: 112
+},
+    {
+        questionText: "In a two-way table, 4 boys and 6 girls like football, and 5 boys and 3 girls like basketball. How many children like football?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Add the number of boys and girls who like football: 4 + 6 = 10.</p>
+            <p><strong>Answer:</strong> 10 children</p>
+        `
+    ,
+questionNo: 113
+},
+    {
+        questionText: "A pictogram shows 4 stars for reading, each star representing 3 children. How many children like reading?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Each star represents 3 children, so 4 stars = 4 × 3 = 12 children.</p>
+            <p><strong>Answer:</strong> 12 children</p>
+        `
+    ,
+questionNo: 114
+},
+    {
+        questionText: "In a bar chart, the bar for blue is 6 cm, and for red is 4 cm. Each cm is 1 vote. Which colour has more votes?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Blue: 6 cm = 6 votes. Red: 4 cm = 4 votes. <br>
+            6 > 4, so blue has more votes.</p>
+            <p><strong>Answer:</strong> Blue</p>
+        `
+    ,
+questionNo: 115
+},
+    {
+        questionText: "How many total votes in a two-way table where 3 boys and 2 girls like swimming, and 4 boys and 5 girls like running?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Swimming: 3 + 2 = 5. Running: 4 + 5 = 9. <br>
+            Total: 5 + 9 = 14 votes.</p>
+            <p><strong>Answer:</strong> 14 votes</p>
+        `
+    ,
+questionNo: 116
+},
+    {
+        questionText: "A pictogram shows 2 cars for boys and 3 cars for girls, each car representing 4 children. How many girls chose cars?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Each car represents 4 children. For girls, 3 cars = 3 × 4 = 12 children.</p>
+            <p><strong>Answer:</strong> 12 girls</p>
+        `
+    ,
+questionNo: 117
+},
+    {
+        questionText: "In a bar chart, the bar for apples is 3 cm, and for oranges is 5 cm. Each cm is 2 fruits. What is the total number of fruits?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Apples: 3 cm = 3 × 2 = 6 fruits. Oranges: 5 cm = 5 × 2 = 10 fruits. <br>
+            Total: 6 + 10 = 16 fruits.</p>
+            <p><strong>Answer:</strong> 16 fruits</p>
+        `
+    ,
+questionNo: 118
+},
+    {
+        questionText: "In a two-way table, 6 children like summer and 4 like winter. How many more like summer?",
+        svgDiagram: "",
+        answerText: `
+            <p><strong>Model Answer:</strong></p>
+            <p>Subtract: 6 - 4 = 2.</p>
+            <p><strong>Answer:</strong> 2 more children</p>
+        `
+    ,
+questionNo: 119
+}
+];
+
+        const questionTextEl = document.getElementById('question-text');
+        const diagramContainerEl = document.getElementById('diagram-container');
+        const answerAreaEl = document.getElementById('answer-area');
+        const answerButton = document.getElementById('answer-button');
+        const playButton = document.getElementById('play-button');
+        const playAnswerButton = document.getElementById('play-answer-button');
+        const nextButton = document.getElementById('next-button');
+        const startButton = document.getElementById('startButton');
+        const landingContainer = document.getElementById('landing-container');
+        const mainContainer = document.getElementById('main-container');
+
+        let currentQuestionIndex = -1;
+        let currentQuestion = null;
+        let currentAudio = null; // To keep track of the currently playing audio
+
+        // Show/hide landing page and main content
+        startButton.addEventListener('click', () => {
+            landingContainer.style.display = 'none';
+            mainContainer.style.display = 'block';
+            // Load first question when starting
+            loadNextQuestion();
+        });
+
+        function displayQuestion(index) {
+            currentQuestion = questions[index];
+            questionTextEl.innerHTML = currentQuestion.questionText;
+
+            if (currentQuestion.svgDiagram && currentQuestion.svgDiagram.trim() !== "") {
+                diagramContainerEl.innerHTML = currentQuestion.svgDiagram;
+                diagramContainerEl.style.display = 'block';
+            } else {
+                diagramContainerEl.innerHTML = '';
+                diagramContainerEl.style.display = 'none';
+            }
+
+            answerAreaEl.style.display = 'none'; // Hide answer when new question loads
+            answerAreaEl.innerHTML = ''; // Clear previous answer
+            playAnswerButton.style.display = 'none'; // Hide play answer button when new question loads
+
+            // Stop any currently playing audio when displaying a new question
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+        }
+
+        function showAnswer() {
+            if (currentQuestion) {
+                answerAreaEl.innerHTML = currentQuestion.answerText;
+                answerAreaEl.style.display = 'block';
+                playAnswerButton.style.display = 'inline-block'; // Show play answer button when answer is displayed
+            }
+        }
+
+        function playQuestionAudio() {
+            if (currentQuestion) {
+                // Stop any currently playing audio
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio = null;
+                }
+                // Create new audio object for the current question
+                const audioFile = `questions/${currentQuestion.questionNo}.mp3`;
+                currentAudio = new Audio(audioFile);
+                currentAudio.play().catch(error => {
+                    console.error('Error playing audio:', error);
+                    alert('Unable to play the question audio file. Please check if the file exists in the questions directory.');
+                });
+            }
+        }
+
+        function playAnswerAudio() {
+            if (currentQuestion) {
+                // Stop any currently playing audio
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio = null;
+                }
+                // Create new audio object for the current answer
+                const audioFile = `answers/${currentQuestion.questionNo}.mp3`;
+                currentAudio = new Audio(audioFile);
+                currentAudio.play().catch(error => {
+                    console.error('Error playing audio:', error);
+                    alert('Unable to play the answer audio file. Please check if the file exists in the answers directory.');
+                });
+            }
+        }
+
+        function loadNextQuestion() {
+            if (questions.length === 0) {
+                questionTextEl.innerHTML = "No questions loaded. Please add questions to the 'questions' array in the script.";
+                diagramContainerEl.innerHTML = '';
+                answerAreaEl.style.display = 'none';
+                playAnswerButton.style.display = 'none'; // Hide play answer button
+                return;
+            }
+
+            let newIndex;
+            if (questions.length > 1) {
+                do {
+                    newIndex = Math.floor(Math.random() * questions.length);
+                } while (newIndex === currentQuestionIndex);
+            } else {
+                newIndex = 0;
+            }
+            currentQuestionIndex = newIndex;
+            displayQuestion(currentQuestionIndex);
+        }
+
+        // Event Listeners for buttons
+        answerButton.addEventListener('click', showAnswer);
+        playButton.addEventListener('click', playQuestionAudio);
+        playAnswerButton.addEventListener('click', playAnswerAudio);
+        nextButton.addEventListener('click', loadNextQuestion);
+    </script>
+</body>
+</html>

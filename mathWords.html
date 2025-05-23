@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="windows-1252">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seb's Math Words</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        .word {
+            display: inline-block;
+            margin: 10px;
+            padding: 20px;
+            font-size:30px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+        .word:hover {
+            background-color: #ddd;
+        }
+        h1 {
+            font-size: 50px;  /* Increase title font size */
+        }
+        h2 {
+            font-size: 28px;  /* Increase subtitle font size */
+        }
+        #startButton {
+            font-size: 30px;  /* Increase start button font size */
+            padding: 10px 20px;
+            font-family: Arial, sans-serif;
+        }
+        #playAgainButton {
+            display: none;
+            font-size: 30px;  /* Set font size for play again button */
+            padding: 10px 20px;
+            font-family: Arial, sans-serif;
+            margin: 20px auto; /* Center the play again button */
+        }
+    </style>
+</head>
+<body>
+    <h1>Seb's Math Words</h1>
+    <h2>Click on the word you hear</h2>
+    <button id="startButton">Start</button>
+    <div id="wordsContainer"></div>
+    <button id="playAgainButton">Play word again</button>
+
+    <script>
+        const wordString = "abacus,able,across,acute,add,adding,addition,afternoon,ago,allowed,along,altogether,always,amount,amounts,analogue,angle,angled,angles,another,answer,answers,ante,anti,anticlockwise,apart,appropriate,approximate,approximately,around,arrange,array,arrow,arrows,ascend,autumn,away,axes,axis,back,backwards,bag,balance,balances,bar,based,bedtime,behind,bend,beside,best,beyond,big,bigger,biggest,block,blocks,board,bonds,book,bottom,bought,boundary,boxes,build,buy,calculate,calculation,calculations,calendar,came,capacity,cards,carry,centimetre,centre,century,chain,change,chart,cheap,cheaper,check,children,choose,circle,circular,clock,clockwise,close,coin,collect,colour,column,comes,coming,common,compare,compass,complete,cone,consecutive,container,contains,continue,convert,copy,copying,corner,correct,cost,costs,count,counters,counting,cross,cube,cubes,cuboid,curved,cut,cylinder,data,date,days,decide,decisions,deep,denominator,depth,descend,describe,diagonal,diagram,dice,dictionaries,die,difference,different,digit,digital,digits,direction,discuss,distance,divide,divided,division,dominoes,dotted,double,doubles,draw,duration,earliest,early,east,edge,empty,end,enough,equal,equally,equals,equation,equivalent,estimate,estimating,even,every,exact,exactly,example,exchange,expensive,explain,explaining,face,facts,far,fast,faster,fastest,favourite,fewer,fewest,figures,fill,finish,five,fives,flat,fold,forbidden,fortnight,forwards,four,fours,fraction,fractions,frequency,front,full,furthest,general,get,give,given,going,got,gram,graph,graphs,greater,greatest,grid,group,grouping,groups,guess,half,halve,halves,handling,heavier,heaviest,heavy,height,hemi,hexagon,hexagonal,higher,highlighted,holds,hollow,horizontal,hour,hundred,hundreds,identify,including,inequality,inside,instructions,integer,interpret,interpreting,interval,inverse,investigate,item,join,jotting,key,kilogram,kilometre,kite,label,larger,largest,late,latest,layer,least,leave,left,length,lengths,less,lighter,lightest,like,liked,line,lines,list,listen,litre,long,longer,longest,look,lots,low,lower,machine,make,making,many,mass,match,matching,materials,mathematical,maths,measure,measurement,measures,measuring,method,metre,midday,midnight,might,mile,millilitre,millimetre,minus,minute,minutes,mirror,missing,mixed,model,month,months,morning,movement,much,multi,multiple,multiples,multiplication,multiplied,multiply,narrow,near,nearest,nearly,never,newer,newest,none,north,notation,number,numbers,numerator,numerical,objectives,objects,obtuse,octagon,octagonal,odd,often,older,oldest,ones,operation,operations,opposite,order,ordering,organising,outside,pair,pairs,parallel,parallelogram,part,partition,past,pattern,patterns,pay,peg,pegs,pen,pence,penny,pens,pentagon,pentagonal,perimeter,permitted,perpendicular,pick,pictogram,pieces,plan,playtime,plus,point,pointed,position,post,pound,pounds,predict,present,price,prism,problem,problems,product,properties,provided,purchasing,puzzle,pyramid,quadrilateral,quarter,quarters,question,questions,quick,quicker,quickest,quickly,rearrange,reasoning,recognise,record,rectangle,rectangular,reference,reflection,relationship,relationships,remainder,remember,repeat,repeated,repeating,represent,represents,rhombus,ribbon,right,ring,rods,roll,roughly,round,rounding,route,row,rule,sample,scale,scales,scissors,score,seasons,second,semi,sensible,sentence,sentences,separate,sequence,sequences,set,seventeen,shade,shaded,shallow,shape,shapes,share,sharing,short,shorter,shortest,show,side,sideways,simple,six,size,sketch,slide,slow,slower,slowest,slowly,smaller,smallest,sold,solid,solve,solving,sometimes,soon,sort,south,space,spaces,spell,spend,spent,sphere,split,spring,square,stands,star,start,statement,step,stick,straight,stretch,strips,subtract,subtraction,sum,summer,surface,symbol,symmetrical,symmetry,table,tables,takes,tall,taller,tallest,tally,tape,tell,ten,tens,tenth,test,thick,thin,think,third,thirds,thousand,three,threes,tick,time,timer,times,title,today,tomorrow,total,towards,toy,trace,track,trapezium,triangle,triangular,try,turn,twentieth,twenty,twice,two,twos,underneath,understand,unit,units,value,vertex,vertical,vertices,vocabulary,vote,watch,way,week,weekend,weigh,weighs,weight,went,whole,width,word,words,working,worth,would,write,written,wrong,year,yesterday,zero";
+        const wordList = wordString.split(',');
+
+        function getRandomWords(list, count) {
+            const shuffled = [...list].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count);
+        }
+
+        function playAudio(fileName, callback) {
+            const audio = new Audio('mathWords/'+fileName);
+            console.log(audio);
+	    audio.play();
+            audio.onended = callback;
+        }
+
+        function startGame() {
+            const wordsContainer = document.getElementById('wordsContainer');
+            wordsContainer.innerHTML = '';
+            document.getElementById('playAgainButton').style.display = 'none';
+
+            const selectedWords = getRandomWords(wordList, 5);
+            const targetWord = selectedWords[Math.floor(Math.random() * selectedWords.length)];
+
+            playAudio(`${targetWord}.mp3`, null);  // Play the first word without delay
+
+            document.getElementById('playAgainButton').onclick = () => {
+                playAudio(`${targetWord}.mp3`, null);  // Play the chosen word again
+            };
+
+            selectedWords.forEach(word => {
+                const wordElement = document.createElement('div');
+                wordElement.className = 'word';
+                wordElement.textContent = word;
+                wordElement.onclick = () => {
+                    if (word === targetWord) {
+                        playAudio('correctSound.mp3', () => {
+                            setTimeout(startGame, 1000);  // Add a 1-second delay before starting the next word
+                        });
+                    } else {
+                        playAudio('wrongSound.mp3', null);
+                    }
+                };
+                wordsContainer.appendChild(wordElement);
+            });
+
+            document.getElementById('playAgainButton').style.display = 'block';  // Show the play again button
+        }
+
+        document.getElementById('startButton').onclick = () => {
+            document.querySelector('h2').style.display = 'none';
+            document.getElementById('startButton').style.display = 'none';
+            startGame();
+        };
+    </script>
+</body>
+</html>
