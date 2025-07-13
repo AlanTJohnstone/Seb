@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="windows-1252">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seb's Multiplications</title>
     <style>
         body {
@@ -33,7 +34,7 @@
             color: #7393B3;
         }
 
-        button {  /* Added this new rule */
+        button {
             margin-top: 20px;
             font-size: 36px;
             padding: 10px 20px;
@@ -88,7 +89,7 @@
         }
 
         function playSound(fileName, callback) {
-            var audio = new Audio('numberFiles/'+fileName);
+            var audio = new Audio('numberFiles/' + fileName);
             audio.play();
             audio.addEventListener('ended', function() {
                 if (callback) callback();
@@ -98,18 +99,17 @@
         function generateQuestion() {
             var num1 = getRandomNumber();
             var num2 = getRandomNumber();
-            
-            var questionText, answer, soundSequence;
 
-            
-            questionText = num1 + ' x ' + num2;
-            answer = num1 * num2;
-            soundSequence = [num1 + '.mp3', 'times.mp3', num2 + '.mp3'];
-            
+            var questionText = num1 + ' x ' + num2;
+            var answer = num1 * num2;
+            var soundSequence = [num1 + '.mp3', 'times.mp3', num2 + '.mp3'];
 
             document.getElementById('question').innerText = questionText;
-            document.getElementById('answer').value = '';
-            document.getElementById('answer').dataset.sum = answer;
+            var answerInput = document.getElementById('answer');
+            answerInput.value = '';
+            answerInput.dataset.sum = answer;
+            answerInput.disabled = false;
+            answerInput.focus();
 
             function playSounds(sequence, index = 0) {
                 if (index < sequence.length) {
@@ -128,13 +128,17 @@
 
             if (userAnswer === correctAnswer) {
                 correctAnswers++;
+                answerInput.disabled = true; // 🔒 Prevent repeat entry
                 playSound('good.mp3', function() {
-                    setTimeout(generateQuestion, 1000);
+                    setTimeout(() => {
+                        generateQuestion();
+                    }, 1000);
                 });
             } else {
                 wrongAnswers++;
                 playSound('bad.mp3', function() {
                     answerInput.value = '';
+                    answerInput.focus();
                 });
             }
         }
@@ -155,7 +159,7 @@
                         showCongratsScreen(correctAnswers);
                     } else {
                         document.getElementById('endMessage').style.display = 'block';
-                        document.getElementById('endMessage').innerText = 
+                        document.getElementById('endMessage').innerText =
                             `Time's up! Correct Answers: ${correctAnswers}, Wrong Answers: ${wrongAnswers}`;
                         document.getElementById('startButton').style.display = 'block';
                         document.getElementById('bestTimes').style.display = 'block';
@@ -170,12 +174,11 @@
             document.getElementById('questionContainer').style.display = 'none';
             document.getElementById('timerContainer').style.display = 'none';
             document.getElementById('congratsScreen').style.display = 'block';
-            document.getElementById('congratsMessage').innerText = 
+            document.getElementById('congratsMessage').innerText =
                 `Congratulations, your best score is now ${newScore}!`;
             playSound('congratulations.mp3', function() {
                 document.getElementById('playAgainButton').style.display = 'block';
-            })
-            
+            });
         }
 
         function resetGame() {
@@ -183,8 +186,7 @@
             document.getElementById('endMessage').style.display = 'none';
             document.getElementById('questionContainer').style.display = 'block';
             document.getElementById('timerContainer').style.display = 'block';
-            document.getElementById('answer').disabled = false;
-	    document.getElementById('playAgainButton').style.display = 'none';
+            document.getElementById('playAgainButton').style.display = 'none';
             correctAnswers = 0;
             wrongAnswers = 0;
             updatebestTimesDisplay();
@@ -194,7 +196,7 @@
 
         function updatebestTimesDisplay() {
             let bestTimesScore = getCookie('bestTimesScore') || '0';
-            document.getElementById('bestTimes').innerText = 
+            document.getElementById('bestTimes').innerText =
                 `Your Highest Score: ${bestTimesScore}`;
         }
 
@@ -233,7 +235,7 @@
     <div id="questionContainer">
         <span id="question"></span>
         <span>=</span>
-        <input type="number" id="answer" />
+        <input type="number" id="answer" aria-label="Enter your answer" />
     </div>
     <div id="timerContainer">
         <div id="timer">Remaining Time: 60 Seconds</div>
@@ -244,3 +246,4 @@
         <button id="playAgainButton">Play again?</button>
     </div>
 </body>
+</html>

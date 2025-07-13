@@ -127,22 +127,29 @@
         }
 
         function checkAnswer() {
-            var answerInput = document.getElementById('answer');
-            var userAnswer = parseInt(answerInput.value);
-            var correctAnswer = parseInt(answerInput.dataset.sum);
+    var answerInput = document.getElementById('answer');
+    var userAnswer = parseInt(answerInput.value);
+    var correctAnswer = parseInt(answerInput.dataset.sum);
 
-            if (userAnswer === correctAnswer) {
-                correctAnswers++;
-                playSound('good.mp3', function() {
-                    setTimeout(generateQuestion, 1000);
-                });
-            } else {
-                wrongAnswers++;
-                playSound('bad.mp3', function() {
-                    answerInput.value = '';
-                });
-            }
-        }
+    if (userAnswer === correctAnswer) {
+        correctAnswers++;
+        answerInput.disabled = true;  // 🔒 Prevent further input
+        playSound('good.mp3', function() {
+            setTimeout(() => {
+                generateQuestion();
+                answerInput.disabled = false;  // 🔓 Re-enable input for next question
+                answerInput.focus();           // 👍 Good UX
+            }, 1000);
+        });
+    } else {
+        wrongAnswers++;
+        playSound('bad.mp3', function() {
+            answerInput.value = '';
+            answerInput.focus();  // Keep focus for retry
+        });
+    }
+}
+
 
         function startTimer(display) {
             var timer = 60;
